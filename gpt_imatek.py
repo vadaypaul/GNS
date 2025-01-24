@@ -3,7 +3,7 @@ import openai
 from datetime import datetime
 
 # Configura tu clave de API de OpenAI
-openai.api_key = "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"
+openai.api_key = "OPENAI_API_KEY_VADAY"
 
 PROMPT_BASE = """
 ROL Y PERSONALIDAD
