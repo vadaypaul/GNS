@@ -33,38 +33,38 @@ def guardar_contextos(contextos):
         raise RuntimeError(f"Error guardando contextos: {str(e)}") from e
 
 def actualizar_contexto(usuario_id, mensaje, nombre_usuario="Usuario"):
-    """
-    Actualiza el contexto de un usuario con el nuevo mensaje, asegurando que no exceda los 10,000 caracteres.
-    Cada mensaje se guarda con su fecha exacta y el nombre del usuario.
-    """
     try:
         # Cargar el contexto actual
         contextos = cargar_contextos()
 
-        # Validar que contextos[usuario_id] sea una lista de dicts
-        if not isinstance(contextos.get(str(usuario_id), []), list) or not all(isinstance(m, dict) for m in contextos[str(usuario_id)]):
-            contextos[str(usuario_id)] = []  # Reiniciar como lista vacía si no cumple el formato esperado
+        # Validar que contextos[usuario_id] sea una lista válida
+        if not isinstance(contextos.get(str(usuario_id), []), list):
+            contextos[str(usuario_id)] = []
+
+        # Validar y corregir mensajes con estructura incorrecta
+        for idx, entrada in enumerate(contextos.get(str(usuario_id), [])):
+            if isinstance(entrada.get("mensaje"), dict):
+                contextos[str(usuario_id)][idx]["mensaje"] = entrada["mensaje"].get("mensaje", "Mensaje inválido")
 
         # Crear un nuevo contexto si no existe
         if str(usuario_id) not in contextos:
             contextos[str(usuario_id)] = []
 
-        # Añadir el nuevo mensaje con su fecha y el nombre del usuario
+        # Añadir el nuevo mensaje
         nuevo_mensaje = {
             "nombre_usuario": nombre_usuario,
             "mensaje": mensaje,
-            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Guardar la fecha actual
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         contextos[str(usuario_id)].append(nuevo_mensaje)
 
         # Limitar a 10,000 caracteres por usuario
-        caracteres_totales = sum(len(m["mensaje"]) for m in contextos[str(usuario_id)])
+        caracteres_totales = sum(len(m.get("mensaje", "")) if isinstance(m.get("mensaje"), str) else 0 for m in contextos[str(usuario_id)])
         while caracteres_totales > 3000:
-            # Eliminar el mensaje más antiguo
             contextos[str(usuario_id)].pop(0)
-            caracteres_totales = sum(len(m["mensaje"]) for m in contextos[str(usuario_id)])
+            caracteres_totales = sum(len(m.get("mensaje", "")) if isinstance(m.get("mensaje"), str) else 0 for m in contextos[str(usuario_id)])
 
-        # Guardar los cambios en el archivo
+        # Guardar los cambios
         guardar_contextos(contextos)
         return contextos[str(usuario_id)]
     except Exception as e:
