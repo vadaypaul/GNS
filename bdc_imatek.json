@@ -1,5 +1,5 @@
 {
-    "9062609860490397": [
+    "8825027810899452": [
         {
             "nombre_usuario": "Paul Aguirre",
             "mensaje": "cuales servicios ofrecen en la clinica?",
@@ -12,10 +12,7 @@
         },
         {
             "nombre_usuario": "Usuario",
-            "mensaje": {
-                "mensaje": "me rompi un pie y necesito rayos x",
-                "nombre_usuario": "Paul Aguirre"
-            },
+            "mensaje": "me rompi un pie y necesito rayos x",
             "fecha": "2025-01-20 21:25:23"
         },
         {
@@ -30,10 +27,7 @@
         },
         {
             "nombre_usuario": "Usuario",
-            "mensaje": {
-                "mensaje": "y tomografia no tiene de pie?",
-                "nombre_usuario": "Paul Aguirre"
-            },
+            "mensaje": "y tomografia no tiene de pie?",
             "fecha": "2025-01-20 21:25:58"
         },
         {
@@ -48,10 +42,7 @@
         },
         {
             "nombre_usuario": "Usuario",
-            "mensaje": {
-                "mensaje": "de que partes tiene tomografia",
-                "nombre_usuario": "Paul Aguirre"
-            },
+            "mensaje": "de que partes tiene tomografia",
             "fecha": "2025-01-20 21:26:12"
         },
         {
@@ -66,10 +57,7 @@
         },
         {
             "nombre_usuario": "Usuario",
-            "mensaje": {
-                "mensaje": "la cabeza",
-                "nombre_usuario": "Paul Aguirre"
-            },
+            "mensaje": "la cabeza",
             "fecha": "2025-01-20 21:26:23"
         },
         {
@@ -84,10 +72,7 @@
         },
         {
             "nombre_usuario": "Usuario",
-            "mensaje": {
-                "mensaje": "y ocupo hacer cita?",
-                "nombre_usuario": "Paul Aguirre"
-            },
+            "mensaje": "y ocupo hacer cita?",
             "fecha": "2025-01-20 21:27:51"
         },
         {
@@ -102,10 +87,7 @@
         },
         {
             "nombre_usuario": "Usuario",
-            "mensaje": {
-                "mensaje": "si, no tienen dentista?",
-                "nombre_usuario": "Paul Aguirre"
-            },
+            "mensaje": "si, no tienen dentista?",
             "fecha": "2025-01-20 21:28:11"
         },
         {
@@ -120,10 +102,7 @@
         },
         {
             "nombre_usuario": "Usuario",
-            "mensaje": {
-                "mensaje": "y tiene rayos x de tele de toras?",
-                "nombre_usuario": "Paul Aguirre"
-            },
+            "mensaje": "y tiene rayos x de tele de toras?",
             "fecha": "2025-01-20 21:28:59"
         },
         {
