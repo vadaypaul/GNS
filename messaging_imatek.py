@@ -1,8 +1,9 @@
 import requests
 import datetime
+import os
 
 # Token de acceso proporcionado por Facebook
-ACCESS_TOKEN = "FACEBOOK_ACCESS_TOKEN_IMATEK"
+ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_IMATEK")
 
 def log_mensaje(sender_id, respuesta, error=None):
     """
