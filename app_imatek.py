@@ -11,8 +11,8 @@ def home():
     return "Chatbot Clínica Imatek está funcionando correctamente."
 
 # Token de acceso de Facebook
-ACCESS_TOKEN = "FACEBOOK_ACCESS_TOKEN_VADAY"
-VERIFY_TOKEN = "FACEBOOK_VERIFY_TOKEN_VADAY"
+ACCESS_TOKEN = "FACEBOOK_ACCESS_TOKEN_IMATEK"
+VERIFY_TOKEN = "FACEBOOK_VERIFY_TOKEN_IMATEK"
 
 # Función para obtener el nombre del usuario
 def obtener_nombre_usuario(sender_id):
