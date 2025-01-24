@@ -2,7 +2,7 @@ import requests
 import datetime
 
 # Token de acceso proporcionado por Facebook
-ACCESS_TOKEN = "EAAIl3Q5cPEoBOZBWQSR7nz9sVHzjLZAzctZCtHMwQrI90m20tkN1V6JkL1U9oGRcZArTKLTa8AlDHOhOa8z3EAaAr56qoFuVu6Mc2wXQszbuuynOSOfZBbZCSzl2xcdUIyTZCCdI9qEcYIHZB3rFGBMFKKZBZATPnR7ZCzGkQIZAkhH32aboz81oC3EFszVZCbUZAp3bvRaeg5vENyrmPY6uF0JwZDZD"
+ACCESS_TOKEN = "FACEBOOK_ACCESS_TOKEN_VADAY"
 
 def log_mensaje(sender_id, respuesta, error=None):
     """
