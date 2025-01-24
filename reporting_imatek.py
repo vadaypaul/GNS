@@ -24,84 +24,79 @@ def limitar_tamano_archivo(archivo, limite_caracteres=10000):
     except Exception as e:
         logging.error(f"Error al limitar el tamaño del archivo: {e}")
 
+# Configuración básica de logging para Render
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, origen_respuesta=None, usuario_id=None, contexto=None):
     """
-    Genera un reporte extremadamente detallado, incluyendo todos los parámetros relevantes, variables del flujo,
-    información del sistema, trazas de errores, y contexto adicional. Limita el tamaño del archivo a 100,000 caracteres.
+    Genera un reporte extremadamente detallado, incluyendo todos los parámetros relevantes,
+    variables del flujo, información del sistema, trazas de errores y contexto adicional.
+    Todo se imprime en los logs en lugar de un archivo.
     """
-    ruta_archivo = r"C:\Users\P3POL\Desktop\Vaday\CHATBOT CLINICA IMATEK\chatbot_clinicaimatek\reporte_imatek.txt"
-    
     try:
-        # Limitar el tamaño del archivo antes de agregar nuevo contenido
-        limitar_tamano_archivo(ruta_archivo)
+        # Timestamp del reporte
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        logging.info(f"=== INICIO DEL REPORTE ===")
+        logging.info(f"Tiempo: {timestamp}")
         
-        # Abrir el archivo de reporte
-        with open(ruta_archivo, mode="a", encoding="utf-8") as reporte_file:
-            # Timestamp del reporte
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            reporte_file.write(f"Tiempo: {timestamp}\n")
-            
-            # Información del sistema
-            reporte_file.write(f"Sistema operativo: {platform.system()} {platform.release()}\n")
-            reporte_file.write(f"Versión de Python: {platform.python_version()}\n")
-            reporte_file.write(f"Procesador: {platform.processor()}\n")
-            reporte_file.write(f"Usuario actual: {os.getlogin()}\n")
-            reporte_file.write(f"Ruta actual: {os.getcwd()}\n")
-            reporte_file.write(f"Comando ejecutado: {' '.join(sys.argv)}\n")
-            
-            # Información del usuario
-            if usuario_id:
-                reporte_file.write(f"ID del usuario: {usuario_id}\n")
-            else:
-                reporte_file.write("ID del usuario: No disponible\n")
-            
-            # Información del mensaje del usuario
-            reporte_file.write(f"\nMensaje del usuario: '{mensaje}'\n")
-            
-            # Contexto asociado
-            if contexto:
-                reporte_file.write("Contexto del usuario:\n")
-                for entrada in contexto:
-                    if isinstance(entrada, dict) and "mensaje" in entrada and "fecha" in entrada:
-                        reporte_file.write(f"- {entrada['mensaje']} ({entrada['fecha']})\n")
-                    else:
-                        reporte_file.write(f"- Entrada no válida: {entrada}\n")
-            else:
-                reporte_file.write("Contexto del usuario: No disponible\n")
-            
-            # Respuesta generada
-            if respuesta:
-                reporte_file.write(f"Respuesta generada:\n{respuesta}\n")
-            else:
-                reporte_file.write("Respuesta generada: None\n")
-            
-            # Archivo JSON involucrado (si aplica)
-            if archivo_json:
-                reporte_file.write(f"Archivo JSON involucrado: {archivo_json}\n")
-                if os.path.exists(archivo_json):
-                    reporte_file.write("Estado del archivo JSON: Existe\n")
+        # Información del sistema
+        logging.info(f"Sistema operativo: {platform.system()} {platform.release()}")
+        logging.info(f"Versión de Python: {platform.python_version()}")
+        logging.info(f"Procesador: {platform.processor()}")
+        logging.info(f"Ruta actual: {os.getcwd()}")
+        logging.info(f"Comando ejecutado: {' '.join(sys.argv)}")
+        
+        # Información del usuario
+        if usuario_id:
+            logging.info(f"ID del usuario: {usuario_id}")
+        else:
+            logging.info("ID del usuario: No disponible")
+        
+        # Información del mensaje del usuario
+        logging.info(f"Mensaje del usuario: '{mensaje}'")
+        
+        # Contexto asociado
+        if contexto:
+            logging.info("Contexto del usuario:")
+            for entrada in contexto:
+                if isinstance(entrada, dict) and "mensaje" in entrada and "fecha" in entrada:
+                    logging.info(f"- {entrada['mensaje']} ({entrada['fecha']})")
                 else:
-                    reporte_file.write("Estado del archivo JSON: No existe\n")
-            
-            # Origen de la respuesta
-            if origen_respuesta:
-                reporte_file.write(f"Origen de la respuesta: {origen_respuesta}\n")
-                if origen_respuesta == "modelo_gpt":
-                    reporte_file.write("Nota: La respuesta fue generada directamente por GPT.\n")
-                elif origen_respuesta == "archivo_json":
-                    reporte_file.write(f"Nota: La respuesta fue obtenida desde el archivo JSON: {archivo_json}\n")
-                elif origen_respuesta == "error_fallback":
-                    reporte_file.write("Nota: Se generó una respuesta genérica debido a un error en el flujo.\n")
-            
-            # Información de errores (si aplica)
-            if error:
-                reporte_file.write(f"\nError Específico: {str(error)}\n")
-                error_type = type(error).__name__
-                reporte_file.write(f"Tipo de error: {error_type}\n")
-                traceback_info = traceback.format_exc()
-                reporte_file.write(f"Pila de seguimiento (traceback):\n{traceback_info}\n")
-            
-            # Separador para facilitar la lectura
-            reporte_file.write("-" * 100 + "\n")
+                    logging.warning(f"- Entrada no válida en el contexto: {entrada}")
+        else:
+            logging.info("Contexto del usuario: No disponible")
+        
+        # Respuesta generada
+        if respuesta:
+            logging.info(f"Respuesta generada: {respuesta}")
+        else:
+            logging.info("Respuesta generada: None")
+        
+        # Archivo JSON involucrado (si aplica)
+        if archivo_json:
+            logging.info(f"Archivo JSON involucrado: {archivo_json}")
+            if os.path.exists(archivo_json):
+                logging.info("Estado del archivo JSON: Existe")
+            else:
+                logging.warning("Estado del archivo JSON: No existe")
+        
+        # Origen de la respuesta
+        if origen_respuesta:
+            logging.info(f"Origen de la respuesta: {origen_respuesta}")
+            if origen_respuesta == "modelo_gpt":
+                logging.info("Nota: La respuesta fue generada directamente por GPT.")
+            elif origen_respuesta == "archivo_json":
+                logging.info(f"Nota: La respuesta fue obtenida desde el archivo JSON: {archivo_json}")
+            elif origen_respuesta == "error_fallback":
+                logging.info("Nota: Se generó una respuesta genérica debido a un error en el flujo.")
+        
+        # Información de errores (si aplica)
+        if error:
+            logging.error(f"Error específico: {str(error)}")
+            logging.error(f"Tipo de error: {type(error).__name__}")
+            logging.error(f"Pila de seguimiento (traceback):\n{traceback.format_exc()}")
+        
+        logging.info(f"=== FIN DEL REPORTE ===")
+    
     except Exception as log_error:
         logging.error(f"Error al generar el reporte: {log_error}")
