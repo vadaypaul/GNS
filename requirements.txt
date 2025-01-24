@@ -1,11 +1,7 @@
-numpy>=1.22,<1.27
-openai==0.27.0
-requests==2.28.1
-tensorflow==2.18.0
-transformers==4.22.0
-tokenizers==0.13.3
-twilio==7.14.0
-protobuf>=3.20.2,<4.22
-pip>=21.0
-setuptools>=58.0
-wheel
+Flask==2.3.2           # Para el servidor web
+openai==0.27.0         # Para integración con la API de OpenAI
+requests==2.28.1       # Para solicitudes HTTP
+numpy>=1.22,<1.27      # Requerido por otras dependencias
+transformers>=4.31.0   # Modelos de NLP avanzados
+tokenizers==0.13.3     # Manejo eficiente de tokens
+protobuf>=3.20.2,<4.22 # Para compatibilidad con TensorFlow/OpenAI
