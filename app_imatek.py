@@ -2,12 +2,17 @@ from flask import Flask, request
 from logic_imatek import procesar_mensaje
 import requests
 from google.cloud import vision
+import os
 
 app = Flask(__name__)
 
+@app.route("/")
+def home():
+    return "Chatbot Clínica Imatek está funcionando correctamente."
+
 # Token de acceso de Facebook
-ACCESS_TOKEN = "EAAIl3Q5cPEoBOZBWQSR7nz9sVHzjLZAzctZCtHMwQrI90m20tkN1V6JkL1U9oGRcZArTKLTa8AlDHOhOa8z3EAaAr56qoFuVu6Mc2wXQszbuuynOSOfZBbZCSzl2xcdUIyTZCCdI9qEcYIHZB3rFGBMFKKZBZATPnR7ZCzGkQIZAkhH32aboz81oC3EFszVZCbUZAp3bvRaeg5vENyrmPY6uF0JwZDZD"
-VERIFY_TOKEN = "VadaySandbox2025"
+ACCESS_TOKEN = "FACEBOOK_ACCESS_TOKEN_VADAY"
+VERIFY_TOKEN = "FACEBOOK_VERIFY_TOKEN_VADAY"
 
 # Función para obtener el nombre del usuario
 def obtener_nombre_usuario(sender_id):
@@ -88,7 +93,7 @@ def webhook():
                                     # Procesar la imagen con Google Vision
                                     texto_procesado = procesar_imagen_google_vision(
                                         "temp_image.jpg",
-                                        r"C:\Users\P3POL\Desktop\Vaday\CHATBOT CLINICA IMATEK\chatbot_clinicaimatek\GOOGLE VISION CREDENTIALS.json"
+                                        os.getenv("GOOGLE_VISION_CREDENTIALS")  # Obtener la ruta desde la variable de entorno
                                     )
                                     if texto_procesado:
                                         mensaje = {"texto": texto_procesado, "nombre_usuario": nombre_usuario}
@@ -121,4 +126,8 @@ def enviar_mensaje(sender_id, mensaje):
         print(f"Error al enviar el mensaje: {e}")
 
 if __name__ == '__main__':
+    app.run(debug=True)
+
+# Asegúrate de que esto esté al final del archivo
+if __name__ == "__main__":
     app.run(debug=True)
