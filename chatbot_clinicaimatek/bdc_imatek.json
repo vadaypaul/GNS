@@ -1,0 +1,140 @@
+{
+    "8825027810899452": [
+        {
+            "nombre_usuario": "Paul Aguirre",
+            "mensaje": "cuales servicios ofrecen en la clinica?",
+            "fecha": "2025-01-20 15:42:39.165775"
+        },
+        {
+            "nombre_usuario": "GPT",
+            "mensaje": "¡Con mucho gusto, Paul! 😊 Entiendo que necesitas realizarte unos rayos X para tu pie. En Clínica Imatek ofrecemos el **Rayos X de Mano AP y LAT** que es un estudio común. \n\nAquí tienes la información:\n\nRayos X de Mano AP y LAT 🩻  \nPrecio: $325 💵  \nIndicaciones: No requiere preparación especial ✅  \nTiempo de entrega de resultados: 1 día hábil 📅  \n\nEste estudio está disponible en nuestras sucursales Juventud y Tecnológico. ¿Te gustaría saber más sobre la ubicación de alguna de estas sucursales o cómo agendar tu cita? 📍📞✨",
+            "fecha": "2025-01-20 21:22:26.864878"
+        },
+        {
+            "nombre_usuario": "Usuario",
+            "mensaje": {
+                "mensaje": "me rompi un pie y necesito rayos x",
+                "nombre_usuario": "Paul Aguirre"
+            },
+            "fecha": "2025-01-20 21:25:23"
+        },
+        {
+            "nombre_usuario": "Paul Aguirre",
+            "mensaje": "me rompi un pie y necesito rayos x",
+            "fecha": "2025-01-20 21:25:27.378029"
+        },
+        {
+            "nombre_usuario": "GPT",
+            "mensaje": "Entiendo que necesitas realizarte unos rayos X para tu pie. Aquí tienes la información:\n\nRayos X de Pie Anteroposterior (AP) 🩻  \nPrecio: $682 💵  \nIndicaciones: No requiere preparación especial ✅  \nTiempo de entrega de resultados: 1 día hábil 📅  \n\nEste estudio está disponible en nuestras sucursales Juventud y Tecnológico. ¿Te gustaría que te proporcione más información sobre la ubicación de alguna de estas sucursales o cómo agendar tu cita? 📍📞✨",
+            "fecha": "2025-01-20 21:25:27.378029"
+        },
+        {
+            "nombre_usuario": "Usuario",
+            "mensaje": {
+                "mensaje": "y tomografia no tiene de pie?",
+                "nombre_usuario": "Paul Aguirre"
+            },
+            "fecha": "2025-01-20 21:25:58"
+        },
+        {
+            "nombre_usuario": "Paul Aguirre",
+            "mensaje": "y tomografia no tiene de pie?",
+            "fecha": "2025-01-20 21:26:00.282222"
+        },
+        {
+            "nombre_usuario": "GPT",
+            "mensaje": "Entiendo que necesitas información sobre tomografías de pie. Lamentablemente, en Clínica Imatek no contamos con tomografías específicamente para el pie. Sin embargo, podemos ofrecerte estudios de tomografía en otras regiones, como por ejemplo la tomografía de tobillo o de otras áreas relacionadas.\n\nSi estás interesado, ¿podrías indicarme qué región o área específica necesitas para poder brindarte más detalles sobre los estudios disponibles? Estoy aquí para ayudarte. 😊✨",
+            "fecha": "2025-01-20 21:26:00.282222"
+        },
+        {
+            "nombre_usuario": "Usuario",
+            "mensaje": {
+                "mensaje": "de que partes tiene tomografia",
+                "nombre_usuario": "Paul Aguirre"
+            },
+            "fecha": "2025-01-20 21:26:12"
+        },
+        {
+            "nombre_usuario": "Paul Aguirre",
+            "mensaje": "de que partes tiene tomografia",
+            "fecha": "2025-01-20 21:26:14.760865"
+        },
+        {
+            "nombre_usuario": "GPT",
+            "mensaje": "Entiendo que necesitas información sobre las tomografías disponibles. En Clínica Imatek ofrecemos varios tipos de tomografías, pero para poder brindarte la información más precisa, me gustaría saber qué parte del cuerpo te interesa examinar. \n\n¿Estás buscando información sobre tomografías de abdomen, cabeza, extremidades o alguna otra área en específico? Estoy aquí para ayudarte. 😊✨",
+            "fecha": "2025-01-20 21:26:14.760865"
+        },
+        {
+            "nombre_usuario": "Usuario",
+            "mensaje": {
+                "mensaje": "la cabeza",
+                "nombre_usuario": "Paul Aguirre"
+            },
+            "fecha": "2025-01-20 21:26:23"
+        },
+        {
+            "nombre_usuario": "Paul Aguirre",
+            "mensaje": "la cabeza",
+            "fecha": "2025-01-20 21:26:26.420370"
+        },
+        {
+            "nombre_usuario": "GPT",
+            "mensaje": "Entiendo que estás interesado en la tomografía de cabeza. Aquí tienes la información que necesitas:\n\nTomografía de Cráneo Simple 🩻  \nPrecio: $2,100 💵  \nIndicaciones: No requiere preparación especial. Seguir las indicaciones de la clínica. ✅  \nTiempo de entrega de resultados: 1 día hábil 📅  \nEste estudio está disponible únicamente en nuestra Sucursal Juventud. \n\nSi necesitas más información sobre la ubicación de la sucursal, cómo agendar tu cita, o tienes alguna otra pregunta, no dudes en decírmelo. Estoy aquí para ayudarte. 😊✨",
+            "fecha": "2025-01-20 21:26:26.420370"
+        },
+        {
+            "nombre_usuario": "Usuario",
+            "mensaje": {
+                "mensaje": "y ocupo hacer cita?",
+                "nombre_usuario": "Paul Aguirre"
+            },
+            "fecha": "2025-01-20 21:27:51"
+        },
+        {
+            "nombre_usuario": "Paul Aguirre",
+            "mensaje": "y ocupo hacer cita?",
+            "fecha": "2025-01-20 21:27:53.827577"
+        },
+        {
+            "nombre_usuario": "GPT",
+            "mensaje": "Entiendo que necesitas hacer una cita. Para todos nuestros estudios es necesario agendarla. Puedes hacerlo fácilmente a través de nuestra página web en https://imatek.mx. La interfaz es bastante intuitiva, así que seguramente podrás hacerlo sin problemas. Si necesitas ayuda adicional, no dudes en llamar al 6146882888, donde nuestro equipo estará encantado de asistirte. 😊✨ ¿Te gustaría saber más sobre los estudios que puedes realizarte o alguna de nuestras sucursales?",
+            "fecha": "2025-01-20 21:27:53.827577"
+        },
+        {
+            "nombre_usuario": "Usuario",
+            "mensaje": {
+                "mensaje": "si, no tienen dentista?",
+                "nombre_usuario": "Paul Aguirre"
+            },
+            "fecha": "2025-01-20 21:28:11"
+        },
+        {
+            "nombre_usuario": "Paul Aguirre",
+            "mensaje": "si, no tienen dentista?",
+            "fecha": "2025-01-20 21:28:13.229051"
+        },
+        {
+            "nombre_usuario": "GPT",
+            "mensaje": "Lamentablemente, en Clínica Imatek no contamos con servicios de odontología, por lo que no tenemos dentistas disponibles. Pero si necesitas información sobre estudios de laboratorio o imagenología, estaré encantado de ayudarte. 🌟 ¿Hay algo más en lo que pueda asistirte? 😊",
+            "fecha": "2025-01-20 21:28:13.229051"
+        },
+        {
+            "nombre_usuario": "Usuario",
+            "mensaje": {
+                "mensaje": "y tiene rayos x de tele de toras?",
+                "nombre_usuario": "Paul Aguirre"
+            },
+            "fecha": "2025-01-20 21:28:59"
+        },
+        {
+            "nombre_usuario": "Paul Aguirre",
+            "mensaje": "y tiene rayos x de tele de toras?",
+            "fecha": "2025-01-20 21:29:01.492738"
+        },
+        {
+            "nombre_usuario": "GPT",
+            "mensaje": "Lamentablemente, en Clínica Imatek no contamos con rayos X de tele de tórax. Sin embargo, ofrecemos el estudio de Rayos X de Tórax Simple, que podría ser lo que necesitas. Aquí tienes la información:\n\nRayos X de Tórax Simple 🩻  \nPrecio: $682 💵  \nIndicaciones: No requiere preparación especial ✅  \nTiempo de entrega de resultados: 1 día hábil 📅  \nEste estudio está disponible en nuestras sucursales Juventud y Tecnológico. \n\nSi necesitas más información sobre cómo agendar tu cita o sobre nuestras sucursales, estoy aquí para ayudarte. 😊✨",
+            "fecha": "2025-01-20 21:29:01.492738"
+        }
+    ]
+}
