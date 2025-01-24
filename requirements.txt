@@ -5,3 +5,4 @@ numpy>=1.22,<1.27      # Requerido por otras dependencias
 transformers>=4.31.0   # Modelos de NLP avanzados
 tokenizers==0.13.3     # Manejo eficiente de tokens
 protobuf>=3.20.2,<4.22 # Para compatibilidad con TensorFlow/OpenAI
+gunicorn>=20.1.0
