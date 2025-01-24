@@ -3,6 +3,7 @@ from logic_imatek import procesar_mensaje
 import requests
 from google.cloud import vision
 import os
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -12,7 +13,7 @@ def home():
 
 # Token de acceso de Facebook
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_IMATEK")
-VERIFY_TOKEN = "ClinicaImatek2025"
+VERIFY_TOKEN = os.getenv("FACEBOOK_VERIFY_TOKEN_IMATEK")
 
 # Agrega este print para verificar que se cargaron correctamente
 print(f"VERIFY_TOKEN: {VERIFY_TOKEN}")
@@ -30,13 +31,10 @@ def obtener_nombre_usuario(sender_id):
         return "Usuario"
 
 # Nueva función para procesar imágenes con Google Vision
-def procesar_imagen_google_vision(ruta_imagen, ruta_credenciales):
+def procesar_imagen_google_vision(contenido_imagen, ruta_credenciales):
     try:
         client = vision.ImageAnnotatorClient.from_service_account_json(ruta_credenciales)
-        with open(ruta_imagen, "rb") as imagen_archivo:
-            contenido = imagen_archivo.read()
-            imagen = vision.Image(content=contenido)
-
+        imagen = vision.Image(content=contenido_imagen)
         respuesta = client.text_detection(image=imagen)
         texto_detectado = respuesta.text_annotations
 
@@ -88,22 +86,23 @@ def webhook():
 
                                 if tipo == 'image':
                                     image_url = attachment['payload']['url']
-                                    # Descargar la imagen
+                                    # Descargar la imagen directamente en memoria
                                     image_response = requests.get(image_url)
-                                    with open("temp_image.jpg", "wb") as temp_file:
-                                        temp_file.write(image_response.content)
-
-                                    # Procesar la imagen con Google Vision
-                                    texto_procesado = procesar_imagen_google_vision(
-                                        "temp_image.jpg",
-                                        os.getenv("GOOGLE_VISION_CREDENTIALS")  # Obtener la ruta desde la variable de entorno
-                                    )
-                                    if texto_procesado:
-                                        mensaje = {"texto": texto_procesado, "nombre_usuario": nombre_usuario}
-                                        respuesta = procesar_mensaje(mensaje, sender_id)
-                                        enviar_mensaje(sender_id, respuesta)
+                                    if image_response.status_code == 200:
+                                        contenido_imagen = image_response.content
+                                        texto_procesado = procesar_imagen_google_vision(
+                                            contenido_imagen,
+                                            os.getenv("GOOGLE_VISION_CREDENTIALS")  # Obtener la ruta desde la variable de entorno
+                                        )
+                                        if texto_procesado:
+                                            mensaje = {"texto": texto_procesado, "nombre_usuario": nombre_usuario}
+                                            respuesta = procesar_mensaje(mensaje, sender_id)
+                                            enviar_mensaje(sender_id, respuesta)
+                                        else:
+                                            enviar_mensaje(sender_id, "Lo siento, no pude procesar la imagen enviada.")
                                     else:
-                                        enviar_mensaje(sender_id, "Lo siento, no pude procesar la imagen enviada.")
+                                        print(f"Error al descargar la imagen: {image_response.status_code}")
+                                        enviar_mensaje(sender_id, "Hubo un problema al descargar la imagen enviada.")
 
                                 else:
                                     print(f"Tipo de adjunto no manejado: {tipo}")
@@ -129,8 +128,4 @@ def enviar_mensaje(sender_id, mensaje):
         print(f"Error al enviar el mensaje: {e}")
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
-# Asegúrate de que esto esté al final del archivo
-if __name__ == "__main__":
     app.run(debug=True)
