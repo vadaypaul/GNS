@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 import traceback
 import sys
@@ -21,7 +22,7 @@ def limitar_tamano_archivo(archivo, limite_caracteres=10000):
             with open(archivo, "w", encoding="utf-8") as file:
                 file.writelines(contenido)
     except Exception as e:
-        print(f"Error al limitar el tamaño del archivo: {e}")
+        logging.error(f"Error al limitar el tamaño del archivo: {e}")
 
 def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, origen_respuesta=None, usuario_id=None, contexto=None):
     """
@@ -103,4 +104,4 @@ def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, orig
             # Separador para facilitar la lectura
             reporte_file.write("-" * 100 + "\n")
     except Exception as log_error:
-        print(f"Error al generar el reporte: {log_error}")
+        logging.error(f"Error al generar el reporte: {log_error}")
