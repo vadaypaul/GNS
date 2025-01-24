@@ -5,27 +5,14 @@ import sys
 import platform
 import os
 
-def limitar_tamano_archivo(archivo, limite_caracteres=10000):
-    """
-    Asegura que el archivo no exceda el tamaño máximo permitido eliminando líneas antiguas.
-    """
-    try:
-        if os.path.exists(archivo):
-            with open(archivo, "r", encoding="utf-8") as file:
-                contenido = file.readlines()
-            
-            # Recortar contenido si excede el límite de caracteres
-            while sum(len(line) for line in contenido) > limite_caracteres:
-                contenido.pop(0)  # Elimina la línea más antigua (al inicio)
-            
-            # Escribir nuevamente el contenido reducido
-            with open(archivo, "w", encoding="utf-8") as file:
-                file.writelines(contenido)
-    except Exception as e:
-        logging.error(f"Error al limitar el tamaño del archivo: {e}")
-
 # Configuración básica de logging para Render
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.DEBUG,  # Captura todos los niveles de logs
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # Envía todos los logs a stdout para Render
+    ]
+)
 
 def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, origen_respuesta=None, usuario_id=None, contexto=None):
     """
