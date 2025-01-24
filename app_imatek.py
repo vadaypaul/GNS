@@ -12,7 +12,7 @@ def home():
 
 # Token de acceso de Facebook
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_IMATEK")
-VERIFY_TOKEN = os.getenv("FACEBOOK_VERIFY_TOKEN_IMATEK")
+VERIFY_TOKEN = "ClinicaImatek2025"
 
 # Agrega este print para verificar que se cargaron correctamente
 print(f"VERIFY_TOKEN: {VERIFY_TOKEN}")
