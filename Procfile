@@ -1,1 +1,1 @@
-web: gunicorn app:app_imatek
+web: gunicorn app_imatek:app
