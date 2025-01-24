@@ -1,1 +1,1 @@
-web: python app_imatek.py
+web: gunicorn app_imatek:app
