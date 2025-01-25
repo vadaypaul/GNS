@@ -1,87 +1,115 @@
-import json
 import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from gpt_imatek import interpretar_mensaje
 from reporting_imatek import generar_reporte
 from gpt_imatek import PROMPT_BASE
 from datetime import datetime
 
-CONTEXT_DB_PATH = r"C:\Users\P3POL\Desktop\Vaday\CHATBOT CLINICA IMATEK\chatbot_clinicaimatek\bbdc_imatek.json"
-
-# Funciones para manejar la base de datos de contextos
-def cargar_contextos():
+# Función para conectar a la base de datos PostgreSQL
+def conectar_db():
     """
-    Carga los contextos desde el archivo JSON. Si el archivo no existe, devuelve un diccionario vacío.
+    Crea la conexión a la base de datos PostgreSQL.
     """
     try:
-        if os.path.exists(CONTEXT_DB_PATH):
-            with open(CONTEXT_DB_PATH, "r", encoding="utf-8") as file:
-                return json.load(file)
-        return {}
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Error leyendo el archivo JSON de contextos: {str(e)}") from e
+        conexion = psycopg2.connect(
+            dbname=os.getenv("DB_NAME_IMATEK"),
+            user=os.getenv("DB_USERNAME_IMATEK"),
+            password=os.getenv("DB_PASSWORD_IMATEK"),
+            host=os.getenv("DB_HOST_IMATEK"),
+            port=os.getenv("DB_PORT_IMATEK")
+        )
+        return conexion
     except Exception as e:
-        raise RuntimeError(f"Error cargando contextos: {str(e)}") from e
+        print(f"Error al conectar con la base de datos: {e}")
+        return None
 
-def guardar_contextos(contextos):
+# Función para obtener el historial de mensajes
+def obtener_historial(usuario_id):
     """
-    Guarda los contextos en el archivo JSON.
+    Obtiene los últimos 10 mensajes del historial del usuario desde la base de datos.
     """
+    conexion = conectar_db()
+    if not conexion:
+        return []
+
     try:
-        with open(CONTEXT_DB_PATH, "w", encoding="utf-8") as file:
-            json.dump(contextos, file, indent=4, ensure_ascii=False)
+        with conexion.cursor(cursor_factory=RealDictCursor) as cursor:
+            query = """
+                SELECT mensaje, fecha
+                FROM mensajes
+                WHERE usuario_id = %s
+                ORDER BY fecha DESC
+                LIMIT 10
+            """
+            cursor.execute(query, (usuario_id,))
+            return cursor.fetchall()
     except Exception as e:
-        raise RuntimeError(f"Error guardando contextos: {str(e)}") from e
+        print(f"Error al obtener historial: {e}")
+        return []
+    finally:
+        conexion.close()
 
-def actualizar_contexto(usuario_id, mensaje, nombre_usuario="Usuario"):
+# Función para guardar un nuevo mensaje en la base de datos
+def guardar_mensaje(usuario_id, mensaje, nombre_usuario="Usuario"):
+    """
+    Guarda un nuevo mensaje en la base de datos.
+    """
+    conexion = conectar_db()
+    if not conexion:
+        return
+
     try:
-        # Cargar el contexto actual
-        contextos = cargar_contextos()
-
-        # Validar que contextos[usuario_id] sea una lista válida
-        if not isinstance(contextos.get(str(usuario_id), []), list):
-            contextos[str(usuario_id)] = []
-
-        # Validar y corregir mensajes con estructura incorrecta
-        for idx, entrada in enumerate(contextos.get(str(usuario_id), [])):
-            if isinstance(entrada.get("mensaje"), dict):
-                contextos[str(usuario_id)][idx]["mensaje"] = entrada["mensaje"].get("mensaje", "Mensaje inválido")
-
-        # Crear un nuevo contexto si no existe
-        if str(usuario_id) not in contextos:
-            contextos[str(usuario_id)] = []
-
-        # Añadir el nuevo mensaje
-        nuevo_mensaje = {
-            "nombre_usuario": nombre_usuario,
-            "mensaje": mensaje,
-            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        contextos[str(usuario_id)].append(nuevo_mensaje)
-
-        # Limitar a 10,000 caracteres por usuario
-        caracteres_totales = sum(len(m.get("mensaje", "")) if isinstance(m.get("mensaje"), str) else 0 for m in contextos[str(usuario_id)])
-        while caracteres_totales > 3000:
-            contextos[str(usuario_id)].pop(0)
-            caracteres_totales = sum(len(m.get("mensaje", "")) if isinstance(m.get("mensaje"), str) else 0 for m in contextos[str(usuario_id)])
-
-        # Guardar los cambios
-        guardar_contextos(contextos)
-        return contextos[str(usuario_id)]
+        with conexion.cursor() as cursor:
+            query = """
+                INSERT INTO mensajes (usuario_id, mensaje, nombre_usuario, fecha)
+                VALUES (%s, %s, %s, %s)
+            """
+            cursor.execute(query, (usuario_id, mensaje, nombre_usuario, datetime.now()))
+            conexion.commit()
     except Exception as e:
-        raise RuntimeError(f"Error actualizando contexto: {str(e)}") from e
-        
+        print(f"Error al guardar mensaje: {e}")
+    finally:
+        conexion.close()
+
+# Función para limitar el historial del usuario
+def limitar_historial(usuario_id):
+    """
+    Elimina los mensajes más antiguos para mantener el historial limitado a 10 entradas.
+    """
+    conexion = conectar_db()
+    if not conexion:
+        return
+
+    try:
+        with conexion.cursor() as cursor:
+            query = """
+                DELETE FROM mensajes
+                WHERE id IN (
+                    SELECT id
+                    FROM mensajes
+                    WHERE usuario_id = %s
+                    ORDER BY fecha DESC
+                    OFFSET 10
+                )
+            """
+            cursor.execute(query, (usuario_id,))
+            conexion.commit()
+    except Exception as e:
+        print(f"Error al limitar historial: {e}")
+    finally:
+        conexion.close()
+
 # Función principal para procesar mensajes
-def procesar_mensaje(mensaje, usuario_id, ignorar_coincidencia=False):
+def procesar_mensaje(mensaje, usuario_id):
     """
-    Procesa el mensaje del usuario con la lógica simplificada.
-    Extrae el nombre del usuario directamente del mensaje.
+    Procesa el mensaje del usuario y utiliza el historial para generar contexto.
     """
     try:
-        # Validar que el mensaje sea un diccionario con la información esperada
+        # Validar entrada del mensaje
         if not isinstance(mensaje, dict) or "texto" not in mensaje or "nombre_usuario" not in mensaje:
-            raise ValueError("El mensaje debe ser un diccionario con las claves 'texto' y 'nombre_usuario'.")
+            raise ValueError("El mensaje debe contener las claves 'texto' y 'nombre_usuario'.")
 
-        # Extraer el texto del mensaje y el nombre del usuario
         texto_mensaje = mensaje["texto"]
         nombre_usuario = mensaje["nombre_usuario"]
 
@@ -91,58 +119,46 @@ def procesar_mensaje(mensaje, usuario_id, ignorar_coincidencia=False):
         if not isinstance(usuario_id, (str, int)):
             raise TypeError("El parámetro 'usuario_id' debe ser un string o un entero.")
         if not isinstance(texto_mensaje, str) or not texto_mensaje.strip():
-            raise TypeError("El parámetro 'texto_mensaje' debe ser un string no vacío.")
+            raise ValueError("El texto del mensaje debe ser un string no vacío.")
 
-        # Actualizar contexto del usuario
-        contexto = actualizar_contexto(usuario_id, {"mensaje": texto_mensaje, "nombre_usuario": nombre_usuario})
+        # Guardar el mensaje en la base de datos
+        guardar_mensaje(usuario_id, texto_mensaje, nombre_usuario)
 
-        # Convertir el contexto de dict a str para construir el prompt
-        try:
-            contexto_filtrado = [
-                f"{m['nombre_usuario']}: {m['mensaje']} ({m['fecha']})"
-                for m in contexto if isinstance(m, dict) and "mensaje" in m and "fecha" in m and "nombre_usuario" in m
-            ]
+        # Limitar el historial del usuario
+        limitar_historial(usuario_id)
 
-            # Detectar tipo de entrada
-            tipo = "desconocido"  # Valor predeterminado para tipo
-            if any(isinstance(m, dict) and "attachments" in m for m in contexto):
-                for m in contexto:
-                    if isinstance(m, dict) and "attachments" in m:
-                        tipo = m["attachments"][0].get("type", "desconocido")
-                        break
-            elif any(isinstance(m, dict) and "mensaje" in m for m in contexto):
-                tipo = "texto"
+        # Obtener el contexto actualizado
+        contexto = obtener_historial(usuario_id)
 
-            # Construir el prompt
-            prompt = PROMPT_BASE.format(
-                contexto="\n".join(contexto_filtrado),
-                pregunta=texto_mensaje,
-                fechayhoraprompt=(datetime.now()).strftime("%d/%m/%Y %H:%M:%S"),  # Incluye fechayhoraprompt aquí
-                tipo=tipo  # Añadir tipo como una nueva variable
-            )
-        except Exception as e:
-            raise RuntimeError(f"Error al construir el prompt: {str(e)}") from e
+        # Crear el prompt con el historial del usuario
+        contexto_filtrado = [
+            f"{m['mensaje']} ({m['fecha']})"
+            for m in contexto
+        ]
+        prompt = PROMPT_BASE.format(
+            contexto="\n".join(contexto_filtrado),
+            pregunta=texto_mensaje,
+            fechayhoraprompt=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            tipo="texto"
+        )
 
-        # Interpretar el mensaje usando GPT
+        # Interpretar el mensaje con GPT
         respuesta_gpt = interpretar_mensaje(
             mensaje=texto_mensaje,
             numero_usuario=str(usuario_id),
             nombre_usuario=nombre_usuario
         )
 
-        # Personalizar la respuesta con el nombre del usuario
-        respuesta_personalizada = f"{respuesta_gpt}"
-
         # Generar reporte
         generar_reporte(
             mensaje=texto_mensaje,
-            respuesta=respuesta_personalizada,
+            respuesta=respuesta_gpt,
             contexto=contexto,
             usuario_id=usuario_id
         )
 
-        return respuesta_personalizada
+        return respuesta_gpt
 
     except Exception as e:
         print(f"Error inesperado en procesar_mensaje: {e}")
-        return f"Ocurrió un problema al procesar tu solicitud. Por favor, intenta nuevamente. Detalles del error: {e}"
+        return f"Hubo un problema al procesar tu mensaje. Por favor, intenta nuevamente."
