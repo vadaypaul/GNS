@@ -24,9 +24,11 @@ EVENT_RETENTION_TIME = 24 * 60 * 60  # 24 horas
 
 # Configuración del Limiter
 limiter = Limiter(
-    get_remote_address,  # Función para identificar al cliente
-    app=app  # Vincula el objeto app aquí
+    get_remote_address  # Función para identificar al cliente (por ejemplo, IP)
 )
+
+# Inicialización del Limiter con la app Flask
+limiter.init_app(app)
 
 @app.route("/")
 def home():
