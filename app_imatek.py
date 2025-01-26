@@ -8,7 +8,6 @@ import hmac
 import time
 import logging
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO)
@@ -25,12 +24,15 @@ GOOGLE_VISION_CREDENTIALS = os.getenv("GOOGLE_VISION_CREDENTIALS")
 PROCESSED_EVENTS = {}
 EVENT_RETENTION_TIME = 24 * 60 * 60  # 24 horas
 
-limiter = Limiter(
-    get_remote_address  # Solo pasamos la función para identificar al cliente
-)
+# Función personalizada para key_func (diagnóstico del error original)
+def custom_key_func():
+    return request.headers.get("X-Forwarded-For", request.remote_addr)
 
-# Inicialización con la app de Flask
-limiter.init_app(app)
+# Configuración de Flask-Limiter
+limiter = Limiter(
+    key_func=custom_key_func,  # Se usa la función personalizada
+    app=app  # Integración directa con la app Flask
+)
 
 @app.route("/")
 def home():
