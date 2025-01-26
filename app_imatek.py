@@ -25,11 +25,12 @@ GOOGLE_VISION_CREDENTIALS = os.getenv("GOOGLE_VISION_CREDENTIALS")
 PROCESSED_EVENTS = {}
 EVENT_RETENTION_TIME = 24 * 60 * 60  # 24 horas
 
-# Configuración de Flask-Limiter
 limiter = Limiter(
-    get_remote_address,  # Identificar al cliente por su dirección IP
-    app=app
+    get_remote_address  # Solo pasamos la función para identificar al cliente
 )
+
+# Inicialización con la app de Flask
+limiter.init_app(app)
 
 @app.route("/")
 def home():
