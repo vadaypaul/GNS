@@ -22,12 +22,11 @@ PROCESSED_EVENTS = {}
 # Tiempo máximo para retener un ID procesado (en segundos)
 EVENT_RETENTION_TIME = 24 * 60 * 60  # 24 horas
 
-# Configura Flask-Limiter
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["200 per hour", "50 per minute"]  # Límites globales
-)
+# Configuración del Limiter
+limiter = Limiter(get_remote_address)
+
+# Inicialización del Limiter con la aplicación Flask
+limiter.init_app(app)
 
 @app.route("/")
 def home():
