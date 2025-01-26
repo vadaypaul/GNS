@@ -3,23 +3,39 @@ from logic_imatek import procesar_mensaje
 import requests
 from google.cloud import vision
 import os
-from io import BytesIO
+import hashlib
+import hmac
+import time
+import logging
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Chatbot Clínica Imatek está funcionando correctamente."
 
 # Token de acceso de Facebook
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_IMATEK")
 VERIFY_TOKEN = os.getenv("FACEBOOK_VERIFY_TOKEN_IMATEK")
 
-# Agrega este print para verificar que se cargaron correctamente
-print(f"VERIFY_TOKEN: {VERIFY_TOKEN}")
+# Estructura para almacenar IDs de eventos procesados (con timestamps)
+PROCESSED_EVENTS = {}
+
+# Tiempo máximo para retener un ID procesado (en segundos)
+EVENT_RETENTION_TIME = 24 * 60 * 60  # 24 horas
+
+# Configura Flask-Limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per hour", "50 per minute"]  # Límites globales
+)
+
+@app.route("/")
+def home():
+    return "Chatbot Clínica Imatek está funcionando correctamente."
 
 # Función para obtener el nombre del usuario
 def obtener_nombre_usuario(sender_id):
+    """Obtiene el nombre del usuario desde la API de Facebook."""
     url = f"https://graph.facebook.com/{sender_id}?fields=first_name,last_name&access_token={ACCESS_TOKEN}"
     try:
         response = requests.get(url)
@@ -30,8 +46,9 @@ def obtener_nombre_usuario(sender_id):
         print(f"Error al obtener el nombre del usuario: {e}")
         return "Usuario"
 
-# Nueva función para procesar imágenes con Google Vision
+# Función para procesar imágenes con Google Vision
 def procesar_imagen_google_vision(contenido_imagen, ruta_credenciales):
+    """Procesa imágenes usando la API de Google Vision para detectar texto."""
     try:
         client = vision.ImageAnnotatorClient.from_service_account_json(ruta_credenciales)
         imagen = vision.Image(content=contenido_imagen)
@@ -49,6 +66,7 @@ def procesar_imagen_google_vision(contenido_imagen, ruta_credenciales):
         return None
 
 @app.route('/webhook', methods=['GET', 'POST'])
+@limiter.limit("50 per minute")  # Igual a los límites globales
 def webhook():
     if request.method == 'GET':
         # Manejar la verificación del webhook
@@ -60,11 +78,43 @@ def webhook():
         return 'Token de verificación incorrecto', 403
 
     elif request.method == 'POST':
+        # Validar la firma X-Hub-Signature-256
+        signature = request.headers.get('X-Hub-Signature-256')
+        if not signature:
+            print("Falta la firma en el encabezado.")
+            return 'Falta la firma en el encabezado', 403
+
+        # Generar la firma usando HMAC-SHA256
+        payload = request.get_data()
+        secret = VERIFY_TOKEN.encode()  # Usa tu VERIFY_TOKEN como clave secreta
+        hash_obj = hmac.new(secret, payload, hashlib.sha256)
+        expected_signature = f"sha256={hash_obj.hexdigest()}"
+
+        # Comparar la firma generada con la recibida
+        if not hmac.compare_digest(expected_signature, signature):
+            print("Firma no válida.")
+            return 'Firma no válida', 403
+
+        # Procesar el cuerpo de la solicitud si la firma es válida
         body = request.get_json()
         if body.get('object') == 'page':
             for entry in body['entry']:
+                entry_id = entry.get('id')  # ID único del entry
+                timestamp = time.time()
+
+                # Verificar si el evento ya fue procesado
+                if entry_id in PROCESSED_EVENTS:
+                    # Si el evento está registrado pero expiró, eliminarlo
+                    if timestamp - PROCESSED_EVENTS[entry_id] > EVENT_RETENTION_TIME:
+                        del PROCESSED_EVENTS[entry_id]
+                    else:
+                        print(f"Evento duplicado ignorado: {entry_id}")
+                        continue
+
+                # Registrar el evento como procesado
+                PROCESSED_EVENTS[entry_id] = timestamp
+
                 for event in entry['messaging']:
-                    # Validar que el evento contiene un mensaje
                     if 'message' in event:
                         sender_id = event['sender']['id']
                         nombre_usuario = obtener_nombre_usuario(sender_id)
@@ -80,19 +130,17 @@ def webhook():
                         # Si el mensaje contiene adjuntos
                         elif 'attachments' in event['message']:
                             for attachment in event['message']['attachments']:
-                                # Validar y manejar el tipo de adjunto
                                 tipo = attachment.get('type', 'unknown')  # Manejar el caso donde 'type' no exista
                                 print("Tipo de adjunto:", tipo)
 
                                 if tipo == 'image':
                                     image_url = attachment['payload']['url']
-                                    # Descargar la imagen directamente en memoria
                                     image_response = requests.get(image_url)
                                     if image_response.status_code == 200:
                                         contenido_imagen = image_response.content
                                         texto_procesado = procesar_imagen_google_vision(
                                             contenido_imagen,
-                                            os.getenv("GOOGLE_VISION_CREDENTIALS")  # Obtener la ruta desde la variable de entorno
+                                            os.getenv("GOOGLE_VISION_CREDENTIALS")
                                         )
                                         if texto_procesado:
                                             mensaje = {"texto": texto_procesado, "nombre_usuario": nombre_usuario}
@@ -112,7 +160,6 @@ def webhook():
 
         return 'EVENTO RECIBIDO', 200
 
-
 def enviar_mensaje(sender_id, mensaje):
     url = f"https://graph.facebook.com/v16.0/me/messages?access_token={ACCESS_TOKEN}"
     headers = {'Content-Type': 'application/json'}
@@ -126,6 +173,17 @@ def enviar_mensaje(sender_id, mensaje):
         print(f"Mensaje enviado a {sender_id}: {mensaje}")
     except requests.exceptions.RequestException as e:
         print(f"Error al enviar el mensaje: {e}")
+
+def limpiar_eventos_expirados():
+    """Limpia IDs de eventos procesados que ya expiraron."""
+    timestamp = time.time()
+    ids_a_eliminar = [
+        event_id for event_id, event_time in PROCESSED_EVENTS.items()
+        if timestamp - event_time > EVENT_RETENTION_TIME
+    ]
+    for event_id in ids_a_eliminar:
+        del PROCESSED_EVENTS[event_id]
+    print(f"Se limpiaron {len(ids_a_eliminar)} eventos expirados.")
 
 if __name__ == '__main__':
     app.run(debug=True)
