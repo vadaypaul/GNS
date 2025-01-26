@@ -23,7 +23,11 @@ PROCESSED_EVENTS = {}
 EVENT_RETENTION_TIME = 24 * 60 * 60  # 24 horas
 
 # Configuración del Limiter
-limiter = Limiter(get_remote_address)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],  # Ejemplo de límites
+)
 
 # Inicialización del Limiter con la aplicación Flask
 limiter.init_app(app)
