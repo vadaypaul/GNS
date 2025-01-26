@@ -8,6 +8,7 @@ import hmac
 import time
 import logging
 from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO)
@@ -18,20 +19,17 @@ app = Flask(__name__)
 # Configuración de tokens y claves de API
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_IMATEK")
 VERIFY_TOKEN = os.getenv("FACEBOOK_VERIFY_TOKEN_IMATEK")
+APP_SECRET = os.getenv("APP_SECRET_IMATEK")
 GOOGLE_VISION_CREDENTIALS = os.getenv("GOOGLE_VISION_CREDENTIALS")
 
 # Estructura para evitar duplicados
 PROCESSED_EVENTS = {}
 EVENT_RETENTION_TIME = 24 * 60 * 60  # 24 horas
 
-# Función personalizada para key_func (diagnóstico del error original)
-def custom_key_func():
-    return request.headers.get("X-Forwarded-For", request.remote_addr)
-
 # Configuración de Flask-Limiter
 limiter = Limiter(
-    key_func=custom_key_func,  # Se usa la función personalizada
-    app=app  # Integración directa con la app Flask
+    key_func=get_remote_address,
+    app=app
 )
 
 @app.route("/")
@@ -113,7 +111,11 @@ def validar_firma(signature, payload):
         logger.error("Falta la firma en el encabezado.")
         return False
 
-    secret = VERIFY_TOKEN.encode()
+    if not APP_SECRET:
+        logger.error("APP_SECRET no está configurado.")
+        return False
+
+    secret = APP_SECRET.encode()
     hash_obj = hmac.new(secret, payload, hashlib.sha256)
     expected_signature = f"sha256={hash_obj.hexdigest()}"
 
@@ -184,4 +186,5 @@ def limpiar_eventos_expirados():
         logger.info(f"Se limpiaron {len(expirados)} eventos expirados.")
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.getenv("PORT", 5000))  # Puerto dinámico o 5000 por defecto
+    app.run(host="0.0.0.0", port=port, debug=True)
