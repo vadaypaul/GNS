@@ -1,7 +1,10 @@
-import json  # Importar el módulo JSON
+import json
 import openai
-from datetime import datetime
 import os
+from datetime import datetime
+from requests.exceptions import RequestException
+import time
+from threading import Thread
 
 # Configura tu clave de API de OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY_VADAY")
@@ -19,7 +22,11 @@ El asistente debe utilizar emojis de la manera más variada, activa y relevante 
 CONTEXTO DE CONVERSACIÓN
 Lo que ha consultado el usuario es lo siguiente: {pregunta}.
 Para brindarte un contexto completo de la interacción con este usuario, se incluye a continuación el historial de la conversación: {contexto}. Esto te permitirá evitar preguntas redundantes y, mediante un análisis detallado, identificar con precisión el objetivo de la consulta del usuario.
-
+Si detectas que este es la primera interacción con el usuario, o que no ha habido interacción durante 24 horas, anexaras lo siguiente al final del mensaje: “Aviso de Privacidad: http://bit.ly/3PPhnmm”
+Ejemplo 1: 
+Usuario: Hola (y se detecta que es el primer mensaje o que no ha habido interacción en 24 horas).
+Chatbot: ¡Hola!  Estoy aquí para ayudarle en todo lo que necesite sobre los estudios y sucursales de Clínica Imatek. ¿En qué puedo asistirle hoy?
+Aviso de Privacidad: http://bit.ly/3PPhnmm”
 
 INSTRUCCIONES INICIALES
 El GPT debe comportarse de la siguiente manera:
@@ -30,7 +37,7 @@ En caso de que el usuario pregunte acerca de información relacionada con datos 
 "¿Para qué sirve el estudio de la glucosa?", "¿Qué analiza el estudio de hierro?", "¿La tomografía duele?", "¿Cuánto se demora la toma de muestra de COVID?", "Para ver un hueso fracturado, “¿Es mejor hacerme un ultrasonido o unos Rayos X?", "¿El antidopaje se realiza mediante muestra de orina o de sangre?", etc. El GPT deberá proveer respuestas basadas en su modelo pre-entrenado.
 
 El GPT considera el siguiente diccionario de sinónimos al analizar la pregunta, NO con el fin de hacer reemplazos, sino ÚNICAMENTE de tener contexto interno: 
-Sucursal Juventud=Sucursal Toledo, Juventud=Toledo, Sucursal Pana= Sucursal Panamericana, Pana=Panamericana, EGO=Examen general de orina, TAC=Tomografía, RX=Rayos X, Radiografía=Rayos X, Sonografía=Ultrasonido USG=Ultrasonido, EEG=Electroencefalograma, Electroencefalografía=Electroencefalograma, ECG=Electrocardiograma, QS4=Química Sanguínea de 4 Elementos, QS6=Química Sanguínea de 6 Elementos, QS8=Química Sanguínea de 8 Elementos, QS12=Química Sanguínea de 12 Elementos, QS18=Química Sanguínea de 18 Elementos, QS24=Química Sanguínea de 24 Elementos QS28=Química Sanguínea de 28 Elementos QS30=Química Sanguínea de 30, QS32=Química Sanguínea de 32 QS35=Química Sanguínea de 35 QS38=Química Sanguínea de 38 QS44=Química Sanguínea de 44 Elementos, BH=Biometría Hemática, P Lip=Perfil de Lípidos, CA125=Antígeno Cancerígeno 125, PSA=Antígeno Prostático Especifico, FR=Factor Reumatoide, VSG=Velocidad de Sedimentación Globular, CPL=Colesterol-Lipoproteínas de Baja Densidad, TRH= Tirotropina, ASO=Antiestreptolisina O. 
+Sucursal Juventud=Sucursal Toledo, Juventud=Toledo, Sucursal Pana= Sucursal Panamericana, Pana=Panamericana, EGO=Examen general de orina, TAC=Tomografía, RX=Rayos X, Radiografía=Rayos X, Sonografía=Ultrasonido USG=Ultrasonido, EEG=Electroencefalograma, Electroencefalografía=Electroencefalograma, ECG=Electrocardiograma, QS4=Química Sanguínea de 4 Elementos, QS6=Química Sanguínea de 6 Elementos, QS8=Química Sanguínea de 8 Elementos, QS12=Química Sanguínea de 12 Elementos, QS18=Química Sanguínea de 18 Elementos, QS24=Química Sanguínea de 24 Elementos QS28=Química Sanguínea de 28 Elementos QS30=Química Sanguínea de 30, QS32=Química Sanguínea de 32 QS35=Química Sanguínea de 35 QS38=Química Sanguínea de 38 QS44=Química Sanguínea de 44 Elementos, BH=Biometría Hemática, P Lip=Perfil de Lípidos, CA125=Antígeno Cancerígeno 125, PSA=Antígeno Prostático Especifico, FR=Factor Reumatoide, VSG=Velocidad de Sedimentación Globular, CPL=Colesterol-Lipoproteínas de Baja Densidad, TRH=Tirotropina, ASO=Antiestreptolisina O, OK=Esta bien.
 
 El GPT UNICAMENTE incluye un saludo al comienzo de su frase si recibe un saludo o si el ultimo mensaje del usuario fue hace media hora, para esto deberá basarse en la fecha y hora actual que es la siguiente: {fechayhoraprompt}, y en la fecha y hora del último mensaje del usuario.
 
@@ -584,6 +591,9 @@ Puede visitarnos en la Avenida Tecnológico 6500, ubicada en la Colonia Parral. 
 FIN DEL PROMPT
 """
 
+# Configuración del tiempo de espera para las solicitudes
+OPENAI_TIMEOUT = 10  # Ajusta según sea necesario
+
 def interpretar_mensaje(
     mensaje,
     numero_usuario,
@@ -596,18 +606,6 @@ def interpretar_mensaje(
     """
     Usa GPT para interpretar el mensaje del usuario y generar una respuesta.
     También gestiona y actualiza el contexto en un archivo JSON.
-    
-    Parámetros:
-        mensaje (str): Mensaje del usuario.
-        numero_usuario (str/int): Identificador único del usuario.
-        nombre_usuario (str): Nombre del usuario.
-        contexto_path (str): Ruta al archivo JSON donde se almacena el contexto.
-        modelo_gpt (str): Modelo GPT a usar.
-        max_tokens (int): Máximo de tokens en la respuesta.
-        temperature (float): Temperatura para el modelo.
-    
-    Retorna:
-        str: Respuesta generada por GPT.
     """
     # Validación inicial de parámetros
     if not isinstance(mensaje, str) or not mensaje.strip():
@@ -633,48 +631,17 @@ def interpretar_mensaje(
             print(f"Advertencia: El contexto para el usuario '{numero_usuario}' no es válido. Reinicializando.")
             contexto_usuario = []
 
-        # Convertir el contexto de dict a str para construir el contexto dinámico
+        # Construir el contexto dinámico
         contexto = "\n".join(
             f"{m['nombre_usuario']}: {m['mensaje']} ({m['fecha']})"
             for m in contexto_usuario
             if isinstance(m, dict) and "mensaje" in m and "fecha" in m and "nombre_usuario" in m
         ) if contexto_usuario else "Sin historial previo."
-        
-        # Validar tamaño del contexto
-        if len(contexto) > 4000:
-            print("El contexto supera el límite recomendado. Truncando a 4000 caracteres.")
-            contexto = contexto[:4000]
 
         # Construir el prompt
-        try:
-            # Detectar el tipo de entrada
-            tipo = "desconocido"  # Valor predeterminado
-            if any("attachments" in m for m in contexto_usuario if isinstance(m, dict)):
-                for m in contexto_usuario:
-                    if isinstance(m, dict) and "attachments" in m:
-                        tipo = m["attachments"][0].get("type", "desconocido")
-                        break
-            elif any("mensaje" in m for m in contexto_usuario if isinstance(m, dict)):
-                tipo = "texto"  # Asume texto si no hay adjuntos
+        prompt = f"Eres un asistente profesional para una clínica médica.\n\nContexto:\n{contexto}\n\nPregunta del usuario:\n{mensaje}"
 
-            # Construir el prompt con todas las variables
-            prompt = PROMPT_BASE.format(
-                contexto=contexto,
-                pregunta=mensaje,
-                fechayhoraprompt=(datetime.now()).strftime("%d/%m/%Y %H:%M:%S"),  # Incluye fechayhoraprompt aquí
-                tipo=tipo  # Agregar tipo como variable en el prompt
-            )
-        except KeyError as ke:
-            raise KeyError(f"Faltan claves requeridas en PROMPT_BASE: {ke}") from ke
-        except Exception as e:
-            raise RuntimeError(f"Error al formatear PROMPT_BASE: {e}") from e
-
-        # Depuración del prompt
-        print("=== Depuración del Prompt ===")
-        print(f"Longitud del prompt: {len(prompt)} caracteres")
-        print("=============================")
-
-        # Enviar el mensaje a GPT
+        # Enviar el mensaje a GPT con manejo de tiempo de espera
         try:
             respuesta = openai.ChatCompletion.create(
                 model=modelo_gpt,
@@ -683,11 +650,16 @@ def interpretar_mensaje(
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=max_tokens,
-                temperature=temperature
+                temperature=temperature,
+                timeout=OPENAI_TIMEOUT  # Tiempo de espera configurado
             )
             respuesta_texto = respuesta["choices"][0]["message"]["content"].strip()
-        except Exception as e:
-            raise RuntimeError(f"Error al comunicarse con el modelo GPT: {e}") from e
+        except RequestException as e:
+            print(f"Error de conexión con OpenAI: {e}")
+            return "Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
+        except openai.error.OpenAIError as e:
+            print(f"Error de OpenAI: {e}")
+            return "OpenAI no pudo procesar tu solicitud. Por favor, intenta más tarde."
 
         # Actualizar el contexto con la nueva interacción
         try:
@@ -702,12 +674,29 @@ def interpretar_mensaje(
             print(f"Error al guardar el contexto actualizado: {e}")
 
         return respuesta_texto
-    except ValueError as ve:
-        print(f"Error de validación: {ve}")
-        return f"Hubo un error de validación: {ve}"
-    except KeyError as ke:
-        print(f"Error de clave faltante: {ke}")
-        return f"Error de clave faltante: {ke}"
     except Exception as e:
         print(f"Error inesperado en interpretar_mensaje: {e}")
         return f"Hubo un error procesando tu mensaje. Por favor, intenta nuevamente. Detalles del error: {e}"
+
+
+def mantener_conexion_activa():
+    """
+    Mantiene la conexión con OpenAI activa enviando solicitudes periódicas.
+    """
+    while True:
+        try:
+            print("Verificando conexión con OpenAI...")
+            openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "ping"}],
+                max_tokens=5,
+                timeout=OPENAI_TIMEOUT
+            )
+            print("Conexión exitosa.")
+        except Exception as e:
+            print(f"Error al mantener la conexión activa: {e}")
+        time.sleep(300)  # Espera 5 minutos entre verificaciones
+
+
+# Lanza un hilo para mantener la conexión activa
+Thread(target=mantener_conexion_activa, daemon=True).start()
