@@ -1,3 +1,15 @@
+# Compuesto por:
+# conectar
+# guardar_mensaje
+# obtener_historial
+# limpiar_eventos_expirados
+# obtener_nombre_usuario
+# procesar_imagen_google_vision
+# webhook
+# validar_firma
+# manejar_mensaje
+# enviar_mensaje
+
 from flask import Flask, request
 from logic_imatek import procesar_mensaje
 import requests
@@ -10,6 +22,7 @@ import psycopg2
 from psycopg2 import sql
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from google.cloud import vision
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO)
@@ -120,7 +133,32 @@ def obtener_nombre_usuario(sender_id):
         logger.error(f"Error al obtener el nombre del usuario: {e}")
         return "Usuario"
 
-# Webhook principal
+def procesar_imagen_google_vision(contenido_imagen):
+    """
+    Procesa imágenes usando Google Vision para extraer texto.
+    """
+    try:
+        # Inicializa el cliente de Google Vision usando la ruta de credenciales desde las variables de entorno
+        ruta_credenciales = os.getenv("GOOGLE_VISION_CREDENTIALS")
+        if not ruta_credenciales:
+            logger.error("La ruta de credenciales para Google Vision no está configurada.")
+            return None
+
+        client = vision.ImageAnnotatorClient.from_service_account_json(ruta_credenciales)
+        imagen = vision.Image(content=contenido_imagen)
+        respuesta = client.text_detection(image=imagen)
+        texto_detectado = respuesta.text_annotations
+
+        if not texto_detectado:
+            logger.info("No se detectó texto en la imagen.")
+            return None
+
+        texto_extraido = texto_detectado[0].description.strip()
+        return texto_extraido
+    except Exception as e:
+        logger.error(f"Error procesando la imagen con Google Vision API: {e}")
+        return None
+
 @app.route('/webhook', methods=['GET', 'POST'])
 @limiter.limit("50 per minute")
 def webhook():
@@ -157,10 +195,57 @@ def webhook():
                         PROCESSED_EVENTS[message_id] = timestamp
                         logger.debug(f"Mensaje recibido con ID único: {message_id}")
 
-                        # Manejar el mensaje
-                        manejar_mensaje(event)
+                        sender_id = event['sender']['id']
+                        nombre_usuario = obtener_nombre_usuario(sender_id)
+
+                        # Manejar texto
+                        if 'text' in event['message']:
+                            logger.info("Tipo de entrada: text")
+                            texto_mensaje = event['message']['text']
+                            mensaje = {"texto": texto_mensaje, "nombre_usuario": nombre_usuario}
+                            respuesta = procesar_mensaje(mensaje, sender_id)
+                            enviar_mensaje(sender_id, respuesta)
+
+                        # Manejar adjuntos (imágenes)
+                        elif 'attachments' in event['message']:
+                            for attachment in event['message']['attachments']:
+                                tipo = attachment.get('type', 'unknown')  # Validar tipo de adjunto
+                                logger.info(f"Tipo de adjunto recibido: {tipo}")
+
+                                if tipo == 'image':
+                                    image_url = attachment['payload']['url']
+
+                                    # Descargar la imagen directamente en memoria
+                                    try:
+                                        image_response = requests.get(image_url)
+                                        if image_response.status_code == 200:
+                                            contenido_imagen = image_response.content
+                                            texto_procesado = procesar_imagen_google_vision(
+                                                contenido_imagen,
+                                                os.getenv("GOOGLE_VISION_CREDENTIALS")  # Ruta desde la variable de entorno
+                                            )
+
+                                            if texto_procesado:
+                                                mensaje = {"texto": texto_procesado, "nombre_usuario": nombre_usuario}
+                                                respuesta = procesar_mensaje(mensaje, sender_id)
+                                                enviar_mensaje(sender_id, respuesta)
+                                            else:
+                                                enviar_mensaje(sender_id, "Lo siento, no pude procesar la imagen enviada.")
+                                        else:
+                                            logger.error(f"Error al descargar la imagen: {image_response.status_code}")
+                                            enviar_mensaje(sender_id, "Hubo un problema al descargar la imagen enviada.")
+                                    except Exception as e:
+                                        logger.error(f"Error procesando la imagen: {e}")
+                                        enviar_mensaje(sender_id, "Ocurrió un problema al procesar la imagen.")
+
+                                else:
+                                    logger.warning(f"Tipo de adjunto no manejado: {tipo}")
+                                    enviar_mensaje(sender_id, f"No puedo procesar el adjunto de tipo: {tipo}")
+
+                        else:
+                            logger.warning("Evento recibido sin mensaje válido.")
                     else:
-                        logger.warning("Evento recibido sin mensaje válido.")
+                        logger.warning("Evento recibido sin 'mid' en el mensaje.")
 
             limpiar_eventos_expirados()
         return 'EVENTO RECIBIDO', 200
