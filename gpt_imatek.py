@@ -5,6 +5,12 @@ from datetime import datetime
 from requests.exceptions import RequestException
 import time
 from threading import Thread
+import psycopg2
+from psycopg2.extras import DictCursor
+from datetime import datetime
+import openai
+from threading import Thread
+import time
 
 # Configura tu clave de API de OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY_VADAY")
@@ -20,8 +26,7 @@ Luego de haber leído el contexto de la conversación con el usuario, este GPT d
 El asistente debe utilizar emojis de la manera más variada, activa y relevante que pueda en cada respuesta, alineándose con el tema tratado. Prohibido usar este emoji: 😊.
 
 CONTEXTO DE CONVERSACIÓN
-Lo que ha consultado el usuario es lo siguiente: {pregunta}.
-Para brindarte un contexto completo de la interacción con este usuario, se incluye a continuación el historial de la conversación: {contexto}. Esto te permitirá evitar preguntas redundantes y, mediante un análisis detallado, identificar con precisión el objetivo de la consulta del usuario.
+f"Eres un asistente profesional para una clínica médica.\n\nContexto:\n{contexto}\n\nPregunta del usuario:\n{mensaje}" Esto te permitirá evitar preguntas redundantes y, mediante un análisis detallado, identificar con precisión el objetivo de la consulta del usuario.
 Si detectas que este es la primera interacción con el usuario, o que no ha habido interacción durante 24 horas, anexaras lo siguiente al final del mensaje: “Aviso de Privacidad: http://bit.ly/3PPhnmm”
 Ejemplo 1: 
 Usuario: Hola (y se detecta que es el primer mensaje o que no ha habido interacción en 24 horas).
@@ -591,21 +596,30 @@ Puede visitarnos en la Avenida Tecnológico 6500, ubicada en la Colonia Parral. 
 FIN DEL PROMPT
 """
 
+# Configuración de la base de datos
+DB_CONFIG = {
+    "dbname": "chatbot_imatek_sql",
+    "user": "aguirre",
+    "password": "tu_contraseña",
+    "host": "dpg-cua22qdsvqrc73dln4vg-a.oregon-postgres.render.com",
+    "port": 5432
+}
+
 # Configuración del tiempo de espera para las solicitudes
 OPENAI_TIMEOUT = 10  # Ajusta según sea necesario
+
 
 def interpretar_mensaje(
     mensaje,
     numero_usuario,
     nombre_usuario="Usuario",
-    contexto_path="basededatoscontextossb.json",
     modelo_gpt="gpt-4o-mini",
     max_tokens=500,
     temperature=0.7
 ):
     """
     Usa GPT para interpretar el mensaje del usuario y generar una respuesta.
-    También gestiona y actualiza el contexto en un archivo JSON.
+    Obtiene y actualiza el historial desde PostgreSQL.
     """
     # Validación inicial de parámetros
     if not isinstance(mensaje, str) or not mensaje.strip():
@@ -614,69 +628,65 @@ def interpretar_mensaje(
         raise ValueError("El parámetro 'numero_usuario' debe ser un string o un entero.")
 
     try:
-        # Cargar contexto existente o inicializar uno nuevo
-        try:
-            with open(contexto_path, "r", encoding="utf-8") as file:
-                contextos = json.load(file)
-        except FileNotFoundError:
-            print(f"Archivo de contexto no encontrado: {contexto_path}. Creando uno nuevo.")
-            contextos = {}
-        except json.JSONDecodeError as e:
-            print(f"Error al decodificar el archivo JSON: {e}. Reinicializando archivo.")
-            contextos = {}
+        # Conectar a la base de datos
+        with psycopg2.connect(**DB_CONFIG) as conn:
+            with conn.cursor(cursor_factory=DictCursor) as cursor:
+                # Obtener el historial reciente (últimos 10 mensajes)
+                cursor.execute("""
+                    SELECT mensaje, es_respuesta, timestamp 
+                    FROM mensajes 
+                    WHERE usuario_id = %s 
+                    ORDER BY timestamp DESC 
+                    LIMIT 10;
+                """, (str(numero_usuario),))
+                historial = cursor.fetchall()
 
-        # Validar y obtener contexto del usuario
-        contexto_usuario = contextos.get(str(numero_usuario), [])
-        if not isinstance(contexto_usuario, list):
-            print(f"Advertencia: El contexto para el usuario '{numero_usuario}' no es válido. Reinicializando.")
-            contexto_usuario = []
+                # Construir el contexto dinámico
+                if historial:
+                    contexto = "\n".join(
+                        f"{'GPT' if h['es_respuesta'] else nombre_usuario}: {h['mensaje']} ({h['timestamp']})"
+                        for h in reversed(historial)
+                    )
+                else:
+                    contexto = "Sin historial previo."
 
-        # Construir el contexto dinámico
-        contexto = "\n".join(
-            f"{m['nombre_usuario']}: {m['mensaje']} ({m['fecha']})"
-            for m in contexto_usuario
-            if isinstance(m, dict) and "mensaje" in m and "fecha" in m and "nombre_usuario" in m
-        ) if contexto_usuario else "Sin historial previo."
+                # Construir el prompt
+                prompt = f"Eres un asistente profesional para una clínica médica.\n\nContexto:\n{contexto}\n\nPregunta del usuario:\n{mensaje}"
 
-        # Construir el prompt
-        prompt = f"Eres un asistente profesional para una clínica médica.\n\nContexto:\n{contexto}\n\nPregunta del usuario:\n{mensaje}"
+                # Enviar el mensaje a GPT con manejo de tiempo de espera
+                try:
+                    respuesta = openai.ChatCompletion.create(
+                        model=modelo_gpt,
+                        messages=[
+                            {"role": "system", "content": "Eres un asistente profesional para una clínica médica."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        timeout=OPENAI_TIMEOUT  # Tiempo de espera configurado
+                    )
+                    respuesta_texto = respuesta["choices"][0]["message"]["content"].strip()
+                except Exception as e:
+                    print(f"Error de conexión con OpenAI: {e}")
+                    return "Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
 
-        # Enviar el mensaje a GPT con manejo de tiempo de espera
-        try:
-            respuesta = openai.ChatCompletion.create(
-                model=modelo_gpt,
-                messages=[
-                    {"role": "system", "content": "Eres un asistente profesional para una clínica médica."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=max_tokens,
-                temperature=temperature,
-                timeout=OPENAI_TIMEOUT  # Tiempo de espera configurado
-            )
-            respuesta_texto = respuesta["choices"][0]["message"]["content"].strip()
-        except RequestException as e:
-            print(f"Error de conexión con OpenAI: {e}")
-            return "Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
-        except openai.error.OpenAIError as e:
-            print(f"Error de OpenAI: {e}")
-            return "OpenAI no pudo procesar tu solicitud. Por favor, intenta más tarde."
+                # Guardar el mensaje del usuario y la respuesta en la base de datos
+                try:
+                    cursor.execute("""
+                        INSERT INTO mensajes (usuario_id, mensaje, es_respuesta)
+                        VALUES (%s, %s, %s), (%s, %s, %s);
+                    """, (
+                        str(numero_usuario), mensaje, False,
+                        str(numero_usuario), respuesta_texto, True
+                    ))
+                    conn.commit()
+                except Exception as e:
+                    print(f"Error al guardar mensajes en la base de datos: {e}")
 
-        # Actualizar el contexto con la nueva interacción
-        try:
-            contexto_usuario.append({"nombre_usuario": nombre_usuario, "mensaje": mensaje, "fecha": str(datetime.now())})
-            contexto_usuario.append({"nombre_usuario": "GPT", "mensaje": respuesta_texto, "fecha": str(datetime.now())})
-            contextos[str(numero_usuario)] = contexto_usuario
-
-            # Guardar el contexto actualizado
-            with open(contexto_path, "w", encoding="utf-8") as file:
-                json.dump(contextos, file, ensure_ascii=False, indent=4)
-        except Exception as e:
-            print(f"Error al guardar el contexto actualizado: {e}")
-
-        return respuesta_texto
+                return respuesta_texto
     except Exception as e:
         print(f"Error inesperado en interpretar_mensaje: {e}")
-        return f"Hubo un error procesando tu mensaje. Por favor, intenta nuevamente. Detalles del error: {e}"
+        return f"Hubo un error procesando tu mensaje. Por favor, intenta nuevamente."
 
 
 def mantener_conexion_activa():
