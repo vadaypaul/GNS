@@ -596,17 +596,18 @@ Puede visitarnos en la Avenida Tecnológico 6500, ubicada en la Colonia Parral. 
 FIN DEL PROMPT
 """
 
-# Configuración de la base de datos
+# Configuración de la base de datos desde variables de entorno
 DB_CONFIG = {
-    "dbname": "chatbot_imatek_sql",
-    "user": "aguirre",
-    "password": "tu_contraseña",
-    "host": "dpg-cua22qdsvqrc73dln4vg-a.oregon-postgres.render.com",
-    "port": 5432
+    "dbname": os.getenv("DB_NAME_IMATEK"),
+    "user": os.getenv("DB_USERNAME_IMATEK"),
+    "password": os.getenv("DB_PASSWORD_IMATEK"),
+    "host": os.getenv("DB_HOST_IMATEK"),
+    "port": os.getenv("DB_PORT_IMATEK")
 }
 
-# Configuración del tiempo de espera para las solicitudes
-OPENAI_TIMEOUT = 10  # Ajusta según sea necesario
+# Configuración de OpenAI
+openai.api_key = os.getenv("OPENAI_API_KEY_VADAY")
+OPENAI_TIMEOUT = 10  # Tiempo de espera para las solicitudes a OpenAI
 
 
 def interpretar_mensaje(
@@ -621,7 +622,6 @@ def interpretar_mensaje(
     Usa GPT para interpretar el mensaje del usuario y generar una respuesta.
     Obtiene y actualiza el historial desde PostgreSQL.
     """
-    # Validación inicial de parámetros
     if not isinstance(mensaje, str) or not mensaje.strip():
         raise ValueError("El parámetro 'mensaje' debe ser una cadena no vacía.")
     if not isinstance(numero_usuario, (str, int)):
@@ -631,12 +631,12 @@ def interpretar_mensaje(
         # Conectar a la base de datos
         with psycopg2.connect(**DB_CONFIG) as conn:
             with conn.cursor(cursor_factory=DictCursor) as cursor:
-                # Obtener el historial reciente (últimos 10 mensajes)
+                # Obtener el historial reciente
                 cursor.execute("""
-                    SELECT mensaje, es_respuesta, timestamp 
-                    FROM mensajes 
-                    WHERE usuario_id = %s 
-                    ORDER BY timestamp DESC 
+                    SELECT mensaje, es_respuesta, to_char(timestamp, 'DD/MM/YYYY HH24:MI:SS') as fecha
+                    FROM mensajes
+                    WHERE usuario_id = %s
+                    ORDER BY timestamp DESC
                     LIMIT 10;
                 """, (str(numero_usuario),))
                 historial = cursor.fetchall()
@@ -644,7 +644,7 @@ def interpretar_mensaje(
                 # Construir el contexto dinámico
                 if historial:
                     contexto = "\n".join(
-                        f"{'GPT' if h['es_respuesta'] else nombre_usuario}: {h['mensaje']} ({h['timestamp']})"
+                        f"{'GPT' if h['es_respuesta'] else nombre_usuario}: {h['mensaje']} ({h['fecha']})"
                         for h in reversed(historial)
                     )
                 else:
@@ -653,7 +653,7 @@ def interpretar_mensaje(
                 # Construir el prompt
                 prompt = f"Eres un asistente profesional para una clínica médica.\n\nContexto:\n{contexto}\n\nPregunta del usuario:\n{mensaje}"
 
-                # Enviar el mensaje a GPT con manejo de tiempo de espera
+                # Enviar el mensaje a GPT
                 try:
                     respuesta = openai.ChatCompletion.create(
                         model=modelo_gpt,
@@ -663,18 +663,18 @@ def interpretar_mensaje(
                         ],
                         max_tokens=max_tokens,
                         temperature=temperature,
-                        timeout=OPENAI_TIMEOUT  # Tiempo de espera configurado
+                        timeout=OPENAI_TIMEOUT
                     )
                     respuesta_texto = respuesta["choices"][0]["message"]["content"].strip()
                 except Exception as e:
-                    print(f"Error de conexión con OpenAI: {e}")
+                    print(f"Error al conectarse a OpenAI: {e}")
                     return "Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
 
-                # Guardar el mensaje del usuario y la respuesta en la base de datos
+                # Guardar el mensaje del usuario y la respuesta del bot
                 try:
                     cursor.execute("""
-                        INSERT INTO mensajes (usuario_id, mensaje, es_respuesta)
-                        VALUES (%s, %s, %s), (%s, %s, %s);
+                        INSERT INTO mensajes (usuario_id, mensaje, es_respuesta, timestamp)
+                        VALUES (%s, %s, %s, NOW()), (%s, %s, %s, NOW());
                     """, (
                         str(numero_usuario), mensaje, False,
                         str(numero_usuario), respuesta_texto, True
@@ -708,5 +708,5 @@ def mantener_conexion_activa():
         time.sleep(300)  # Espera 5 minutos entre verificaciones
 
 
-# Lanza un hilo para mantener la conexión activa
+# Lanzar un hilo para mantener la conexión activa
 Thread(target=mantener_conexion_activa, daemon=True).start()
