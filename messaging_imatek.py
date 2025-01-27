@@ -1,3 +1,7 @@
+# Compuesto por:
+# log_mensaje
+# enviar_mensaje
+
 import requests
 import datetime
 import os
