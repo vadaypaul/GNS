@@ -11,11 +11,73 @@ from datetime import datetime
 import openai
 from threading import Thread
 import time
+import re
+import logging
+
+# Configuración del logger
+logger = logging.getLogger("GPT_Imatek")
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 # Configura tu clave de API de OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY_VADAY")
+logger.info(f"Clave de API de OpenAI cargada correctamente.")
 
-print(f"OPENAI_API_KEY: {openai.api_key}")
+# Configuración de conexión a la base de datos
+DB_CONFIG = {
+    "dbname": os.getenv("DB_NAME_IMATEK"),
+    "user": os.getenv("DB_USERNAME_IMATEK"),
+    "password": os.getenv("DB_PASSWORD_IMATEK"),
+    "host": os.getenv("DB_HOST_IMATEK"),
+    "port": os.getenv("DB_PORT_IMATEK")
+}
+
+# Función para sanitizar texto dinámico
+def sanitizar_texto(texto):
+    if not isinstance(texto, str):
+        return "Texto no válido"
+    return re.sub(r"[^\w\s.,!?áéíóúÁÉÍÓÚñÑ]", "", texto).strip()
+
+try:
+    # Variables base (Simulación: estas deben venir de tu flujo)
+    numero_usuario = "12345"  # Reemplazar con el ID real del usuario
+    mensaje = "Hola, ¿me ayudas?"  # Reemplazar con el mensaje real recibido
+    nombre_usuario = "Usuario"  # Valor predeterminado para el nombre
+    historial = []
+
+    # Obtener historial desde la base de datos
+    with psycopg2.connect(**DB_CONFIG) as conn:
+        with conn.cursor(cursor_factory=DictCursor) as cursor:
+            cursor.execute("""
+                SELECT mensaje, es_respuesta, to_char(timestamp, 'DD/MM/YYYY HH24:MI:SS') as fecha
+                FROM mensajes
+                WHERE usuario_id = %s
+                ORDER BY timestamp DESC
+                LIMIT 10;
+            """, (str(numero_usuario),))
+            historial = cursor.fetchall()
+
+    # Validar y sanitizar el contexto
+    contexto = "\n".join(
+        f"{'GPT' if h['es_respuesta'] else nombre_usuario}: {h['mensaje']} ({h['fecha']})"
+        for h in reversed(historial)
+    ) if historial else "Sin historial previo."
+    contexto = sanitizar_texto(contexto)
+
+    # Validar y sanitizar el mensaje
+    mensaje = sanitizar_texto(mensaje)
+    if not mensaje:
+        raise ValueError("El mensaje no puede estar vacío.")
+
+    # Generar la fecha y hora actual para el prompt
+    fechayhoraprompt = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+except Exception as e:
+    logger.error(f"Error al preparar los datos dinámicos para el prompt: {e}")
+    raise
 
 PROMPT_BASE = """
 ROL Y PERSONALIDAD
@@ -27,7 +89,7 @@ El asistente debe utilizar emojis de la manera más variada, activa y relevante 
 
 CONTEXTO DE CONVERSACIÓN
 f"Eres un asistente profesional para una clínica médica.\n\nContexto:\n{contexto}\n\nPregunta del usuario:\n{mensaje}" Esto te permitirá evitar preguntas redundantes y, mediante un análisis detallado, identificar con precisión el objetivo de la consulta del usuario.
-Si detectas que este es la primera interacción con el usuario, o que no ha habido interacción durante 24 horas, anexaras lo siguiente al final del mensaje: “Aviso de Privacidad: http://bit.ly/3PPhnmm”
+Si detectas que este es la primera interacción con el usuario, o que no ha habido interacción durante 24 horas, anexaras lo siguiente al final del mensaje: “Aviso de Privacidad: http://bit.ly/3PPhnmm”.
 Ejemplo 1: 
 Usuario: Hola (y se detecta que es el primer mensaje o que no ha habido interacción en 24 horas).
 Chatbot: ¡Hola!  Estoy aquí para ayudarle en todo lo que necesite sobre los estudios y sucursales de Clínica Imatek. ¿En qué puedo asistirle hoy?
@@ -595,6 +657,21 @@ Puede visitarnos en la Avenida Tecnológico 6500, ubicada en la Colonia Parral. 
 ¿Le gustaría saber algo más específico sobre alguna de nuestras sucursales o los estudios que ofrecemos? 🩵"
 FIN DEL PROMPT
 """
+
+try:
+    # Generar el prompt
+    prompt = PROMPT_BASE.format(
+        contexto=contexto,
+        mensaje=mensaje,
+        fechayhoraprompt=fechayhoraprompt,
+    )
+    logger.info(f"Prompt generado exitosamente: {prompt[:100]}...")  # Muestra solo los primeros 100 caracteres
+except KeyError as ke:
+    logger.error(f"Clave faltante en el PROMPT_BASE: {ke}")
+    raise KeyError(f"Error al formatear el prompt. Clave faltante: {ke}")
+except Exception as e:
+    logger.error(f"Error inesperado al generar el prompt: {e}")
+    raise ValueError(f"Error inesperado al generar el prompt: {e}")
 
 # Configuración de la base de datos desde variables de entorno
 DB_CONFIG = {
