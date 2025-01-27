@@ -1,3 +1,10 @@
+# Compuesto por:
+# conectar_db
+# obtener_historial
+# guardar_mensaje
+# limitar_historial
+# procesar_mensaje
+
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
