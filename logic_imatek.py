@@ -119,6 +119,9 @@ def limitar_historial(usuario_id):
 
 import traceback  # Importación necesaria para manejar trazas de errores detalladas
 
+import traceback
+from datetime import datetime
+
 # Función principal para procesar mensajes
 def procesar_mensaje(mensaje, usuario_id):
     """
@@ -148,6 +151,7 @@ def procesar_mensaje(mensaje, usuario_id):
         # Guardar el mensaje del usuario en la base de datos
         try:
             guardar_mensaje(usuario_id, texto_mensaje, nombre_usuario, es_respuesta=False)
+            logger.info(f"Mensaje guardado exitosamente en la base de datos para usuario: {usuario_id}.")
         except Exception as db_error:
             logger.error(f"Error al guardar el mensaje del usuario en la base de datos: {db_error}")
             return "Hubo un problema al guardar tu mensaje. Por favor, intenta nuevamente."
@@ -155,12 +159,14 @@ def procesar_mensaje(mensaje, usuario_id):
         # Limitar el historial del usuario
         try:
             limitar_historial(usuario_id)
+            logger.info(f"Historial limitado exitosamente para usuario: {usuario_id}.")
         except Exception as limit_error:
             logger.warning(f"Error al limitar el historial para el usuario {usuario_id}: {limit_error}")
 
         # Obtener el contexto actualizado
         try:
             contexto = obtener_historial(usuario_id)
+            logger.info(f"Historial obtenido exitosamente para usuario: {usuario_id}.")
         except Exception as hist_error:
             logger.error(f"Error al obtener el historial para el usuario {usuario_id}: {hist_error}")
             contexto = []
@@ -173,12 +179,16 @@ def procesar_mensaje(mensaje, usuario_id):
         contexto_dinamico = "\n".join(contexto_filtrado) if contexto_filtrado else "Sin historial previo."
 
         # Crear el prompt dinámico
-        prompt = PROMPT_BASE.format(
-            contexto=contexto_dinamico,
-            pregunta=texto_mensaje,
-            fechayhoraprompt=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-            tipo="texto"
-        )
+        try:
+            prompt = PROMPT_BASE.format(
+                contexto=contexto_dinamico,
+                pregunta=texto_mensaje,
+                fechayhoraprompt=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                tipo="texto"
+            )
+        except KeyError as ke:
+            logger.error(f"Error en PROMPT_BASE: Falta la clave {ke}.")
+            return f"Error en la plantilla del mensaje. Por favor, revisa el formato de PROMPT_BASE."
 
         # Interpretar el mensaje con GPT
         try:
@@ -187,6 +197,7 @@ def procesar_mensaje(mensaje, usuario_id):
                 numero_usuario=str(usuario_id),
                 nombre_usuario=nombre_usuario
             )
+            logger.info(f"Respuesta de GPT generada exitosamente para usuario: {usuario_id}.")
         except Exception as gpt_error:
             logger.error(f"Error al interpretar el mensaje con GPT: {gpt_error}")
             return "El sistema tuvo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
@@ -194,6 +205,7 @@ def procesar_mensaje(mensaje, usuario_id):
         # Guardar la respuesta en la base de datos como respuesta del bot
         try:
             guardar_mensaje(usuario_id, respuesta_gpt, "GPT", es_respuesta=True)
+            logger.info(f"Respuesta del bot guardada exitosamente para usuario: {usuario_id}.")
         except Exception as db_resp_error:
             logger.error(f"Error al guardar la respuesta del bot en la base de datos: {db_resp_error}")
 
@@ -205,6 +217,7 @@ def procesar_mensaje(mensaje, usuario_id):
                 contexto=contexto,
                 usuario_id=usuario_id
             )
+            logger.info(f"Reporte generado exitosamente para usuario: {usuario_id}.")
         except Exception as report_error:
             logger.warning(f"Error al generar el reporte para el usuario {usuario_id}: {report_error}")
 
