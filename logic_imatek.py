@@ -117,68 +117,107 @@ def limitar_historial(usuario_id):
     finally:
         conexion.close()
 
+import traceback  # Importación necesaria para manejar trazas de errores detalladas
+
 # Función principal para procesar mensajes
 def procesar_mensaje(mensaje, usuario_id):
     """
     Procesa el mensaje del usuario y utiliza el historial para generar contexto.
     """
     try:
-        # Validar entrada del mensaje
-        if not isinstance(mensaje, dict) or "texto" not in mensaje or "nombre_usuario" not in mensaje:
-            raise ValueError("El mensaje debe contener las claves 'texto' y 'nombre_usuario'.")
+        # Validar que el mensaje sea un diccionario con las claves necesarias
+        if not isinstance(mensaje, dict):
+            raise TypeError("El parámetro 'mensaje' debe ser un diccionario.")
+        if "texto" not in mensaje or "nombre_usuario" not in mensaje:
+            raise ValueError("El diccionario 'mensaje' debe contener las claves 'texto' y 'nombre_usuario'.")
 
-        texto_mensaje = mensaje["texto"]
-        nombre_usuario = mensaje["nombre_usuario"]
+        texto_mensaje = mensaje.get("texto", "").strip()
+        nombre_usuario = mensaje.get("nombre_usuario", "").strip()
+
+        # Validar que usuario_id sea un string o entero
+        if not isinstance(usuario_id, (str, int)):
+            raise TypeError("El parámetro 'usuario_id' debe ser un string o un entero.")
+        if not texto_mensaje:
+            raise ValueError("El texto del mensaje no puede estar vacío.")
+        if not nombre_usuario:
+            logger.warning(f"Nombre de usuario no proporcionado para usuario_id {usuario_id}. Usando 'Usuario'.")
+            nombre_usuario = "Usuario"
 
         logger.info(f"Procesando mensaje: '{texto_mensaje}' para usuario: {usuario_id} ({nombre_usuario})")
 
-        # Validar entradas
-        if not isinstance(usuario_id, (str, int)):
-            raise TypeError("El parámetro 'usuario_id' debe ser un string o un entero.")
-        if not isinstance(texto_mensaje, str) or not texto_mensaje.strip():
-            raise ValueError("El texto del mensaje debe ser un string no vacío.")
-
-        # Guardar el mensaje en la base de datos como entrada del usuario
-        guardar_mensaje(usuario_id, texto_mensaje, nombre_usuario, es_respuesta=False)
+        # Guardar el mensaje del usuario en la base de datos
+        try:
+            guardar_mensaje(usuario_id, texto_mensaje, nombre_usuario, es_respuesta=False)
+        except Exception as db_error:
+            logger.error(f"Error al guardar el mensaje del usuario en la base de datos: {db_error}")
+            return "Hubo un problema al guardar tu mensaje. Por favor, intenta nuevamente."
 
         # Limitar el historial del usuario
-        limitar_historial(usuario_id)
+        try:
+            limitar_historial(usuario_id)
+        except Exception as limit_error:
+            logger.warning(f"Error al limitar el historial para el usuario {usuario_id}: {limit_error}")
 
         # Obtener el contexto actualizado
-        contexto = obtener_historial(usuario_id)
+        try:
+            contexto = obtener_historial(usuario_id)
+        except Exception as hist_error:
+            logger.error(f"Error al obtener el historial para el usuario {usuario_id}: {hist_error}")
+            contexto = []
 
-        # Crear el prompt con el historial del usuario
+        # Construir el contexto dinámico
         contexto_filtrado = [
             f"{m['mensaje']} ({m['fecha']})"
-            for m in contexto
+            for m in contexto if isinstance(m, dict) and "mensaje" in m and "fecha" in m
         ]
+        contexto_dinamico = "\n".join(contexto_filtrado) if contexto_filtrado else "Sin historial previo."
+
+        # Crear el prompt dinámico
         prompt = PROMPT_BASE.format(
-            contexto="\n".join(contexto_filtrado),
+            contexto=contexto_dinamico,
             pregunta=texto_mensaje,
             fechayhoraprompt=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
             tipo="texto"
         )
 
         # Interpretar el mensaje con GPT
-        respuesta_gpt = interpretar_mensaje(
-            mensaje=prompt,  # Enviamos el prompt completo
-            numero_usuario=str(usuario_id),
-            nombre_usuario=nombre_usuario
-        )
+        try:
+            respuesta_gpt = interpretar_mensaje(
+                mensaje=prompt,  # Enviamos el prompt completo
+                numero_usuario=str(usuario_id),
+                nombre_usuario=nombre_usuario
+            )
+        except Exception as gpt_error:
+            logger.error(f"Error al interpretar el mensaje con GPT: {gpt_error}")
+            return "El sistema tuvo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
 
         # Guardar la respuesta en la base de datos como respuesta del bot
-        guardar_mensaje(usuario_id, respuesta_gpt, "GPT", es_respuesta=True)
+        try:
+            guardar_mensaje(usuario_id, respuesta_gpt, "GPT", es_respuesta=True)
+        except Exception as db_resp_error:
+            logger.error(f"Error al guardar la respuesta del bot en la base de datos: {db_resp_error}")
 
         # Generar reporte
-        generar_reporte(
-            mensaje=texto_mensaje,
-            respuesta=respuesta_gpt,
-            contexto=contexto,
-            usuario_id=usuario_id
-        )
+        try:
+            generar_reporte(
+                mensaje=texto_mensaje,
+                respuesta=respuesta_gpt,
+                contexto=contexto,
+                usuario_id=usuario_id
+            )
+        except Exception as report_error:
+            logger.warning(f"Error al generar el reporte para el usuario {usuario_id}: {report_error}")
 
         return respuesta_gpt
 
+    except ValueError as ve:
+        logger.error(f"Error de validación en procesar_mensaje: {ve}")
+        return f"Error de validación: {ve}"
+
+    except TypeError as te:
+        logger.error(f"Error de tipo en procesar_mensaje: {te}")
+        return f"Error de tipo: {te}"
+
     except Exception as e:
-        logger.error(f"Error inesperado en procesar_mensaje: {e}")
-        return f"Hubo un problema al procesar tu mensaje. Por favor, intenta nuevamente."
+        logger.error(f"Error inesperado en procesar_mensaje: {e}\nDetalles: {traceback.format_exc()}")
+        return "Hubo un error inesperado. Por favor, intenta nuevamente."
