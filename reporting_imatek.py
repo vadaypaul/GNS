@@ -17,16 +17,16 @@ logging.basicConfig(
 def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, origen_respuesta=None, usuario_id=None, contexto=None):
     """
     Genera un reporte extremadamente detallado para diagnosticar errores y procesos exitosos.
-    Los logs se priorizan para Render, garantizando información relevante y evitando registrar prompts de GPT.
+    Los logs se priorizan para Render, garantizando información relevante.
     """
     try:
         # Inicio del reporte
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logging.info(f"=== INICIO DEL REPORTE ===")
+        logging.info(f"\n=== INICIO DEL REPORTE ===")
         logging.info(f"Tiempo: {timestamp}")
 
         # Información del sistema
-        logging.info("=== Información del Sistema ===")
+        logging.info("\n=== Información del Sistema ===")
         logging.info(f"Sistema operativo: {platform.system()} {platform.release()}")
         logging.info(f"Versión de Python: {platform.python_version()}")
         logging.info(f"Procesador: {platform.processor()}")
@@ -34,21 +34,21 @@ def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, orig
         logging.info(f"Comando ejecutado: {' '.join(sys.argv)}")
 
         # Información del usuario
-        logging.info("=== Información del Usuario ===")
+        logging.info("\n=== Información del Usuario ===")
         if usuario_id:
             logging.info(f"ID del usuario: {usuario_id}")
         else:
             logging.info("ID del usuario: No disponible")
 
-        # Información del mensaje del usuario
-        logging.info("=== Mensaje del Usuario ===")
+        # Información del texto dinámico {mensaje}
+        logging.info("\n=== Texto Dinámico (Mensaje) ===")
         if mensaje:
-            logging.info(f"Mensaje recibido: {mensaje}")
+            logging.info(f"Texto dinámico: '{mensaje}'")
         else:
-            logging.warning("Mensaje del usuario no disponible o vacío.")
+            logging.warning("El texto dinámico del mensaje está vacío o no disponible.")
 
         # Contexto asociado
-        logging.info("=== Contexto Asociado ===")
+        logging.info("\n=== Contexto Asociado ===")
         if contexto:
             for idx, entrada in enumerate(contexto, 1):
                 if isinstance(entrada, dict) and "mensaje" in entrada and "fecha" in entrada:
@@ -58,15 +58,15 @@ def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, orig
         else:
             logging.info("Contexto del usuario: No disponible o vacío.")
 
-        # Respuesta generada (sin registrar prompts del GPT)
-        logging.info("=== Respuesta Generada ===")
+        # Respuesta generada
+        logging.info("\n=== Respuesta Generada ===")
         if respuesta:
             logging.info(f"Respuesta generada: {respuesta}")
         else:
             logging.info("No se generó ninguna respuesta.")
 
         # Archivo JSON involucrado
-        logging.info("=== Archivo JSON Involucrado ===")
+        logging.info("\n=== Archivo JSON Involucrado ===")
         if archivo_json:
             logging.info(f"Archivo JSON: {archivo_json}")
             if os.path.exists(archivo_json):
@@ -77,7 +77,7 @@ def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, orig
             logging.info("No se especificó archivo JSON.")
 
         # Origen de la respuesta
-        logging.info("=== Origen de la Respuesta ===")
+        logging.info("\n=== Origen de la Respuesta ===")
         if origen_respuesta:
             logging.info(f"Origen: {origen_respuesta}")
             if origen_respuesta == "modelo_gpt":
@@ -90,8 +90,8 @@ def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, orig
             logging.info("Origen de la respuesta: No especificado.")
 
         # Información de errores
+        logging.info("\n=== Información de Errores ===")
         if error:
-            logging.error("=== Información del Error ===")
             logging.error(f"Descripción del error: {str(error)}")
             logging.error(f"Tipo de error: {type(error).__name__}")
             logging.error(f"Trazado del error (traceback):\n{traceback.format_exc()}")
@@ -99,7 +99,7 @@ def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, orig
             logging.info("No se reportaron errores en este proceso.")
 
         # Fin del reporte
-        logging.info(f"=== FIN DEL REPORTE ===")
+        logging.info(f"\n=== FIN DEL REPORTE ===\n")
 
     except Exception as log_error:
         # Si ocurre un error en el proceso de generación de reportes
