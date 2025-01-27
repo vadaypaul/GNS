@@ -32,10 +32,10 @@ DB_CONFIG = {
     "port": os.getenv("DB_PORT_IMATEK")
 }
 
-# Definición de PROMPT_BASE (por seguridad lo incluyo aquí)
+# Definición de PROMPT_BASE (actualizado)
 PROMPT_BASE = """
 Contexto: {contexto}
-Mensaje: {mensaje}
+Último mensaje: {ultimomensaje}
 Fecha y hora: {fechayhoraprompt}
 Tipo: {tipo}
 """
@@ -51,7 +51,7 @@ def sanitizar_texto(texto):
 
 # Función principal para interpretar mensajes
 def interpretar_mensaje(
-    mensaje,
+    ultimomensaje,
     numero_usuario,
     nombre_usuario="Usuario",
     tipo="Consulta médica",  # Se añade el tipo como valor predeterminado
@@ -60,11 +60,11 @@ def interpretar_mensaje(
     temperature=0.7
 ):
     """
-    Usa GPT para interpretar el mensaje del usuario y generar una respuesta.
+    Usa GPT para interpretar el último mensaje del usuario y generar una respuesta.
     Obtiene y actualiza el historial desde PostgreSQL.
     """
-    if not isinstance(mensaje, str) or not mensaje.strip():
-        raise ValueError("El parámetro 'mensaje' debe ser una cadena no vacía.")
+    if not isinstance(ultimomensaje, str) or not ultimomensaje.strip():
+        raise ValueError("El parámetro 'ultimomensaje' debe ser una cadena no vacía.")
     if not isinstance(numero_usuario, (str, int)):
         raise ValueError("El parámetro 'numero_usuario' debe ser un string o un entero.")
 
@@ -94,18 +94,18 @@ def interpretar_mensaje(
 
                 # Sanitizar otros valores
                 contexto = sanitizar_texto(contexto) or "Sin contexto previo."
-                mensaje = sanitizar_texto(mensaje) or "Mensaje no proporcionado."
+                ultimomensaje = sanitizar_texto(ultimomensaje) or "Último mensaje no proporcionado."
                 fechayhoraprompt = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 tipo = sanitizar_texto(tipo) or "Tipo no especificado."
 
                 # Logs para variables dinámicas
-                logger.debug(f"Variables dinámicas: mensaje={mensaje}, contexto={contexto}, fechayhoraprompt={fechayhoraprompt}, tipo={tipo}")
+                logger.debug(f"Variables dinámicas: ultimomensaje={ultimomensaje}, contexto={contexto}, fechayhoraprompt={fechayhoraprompt}, tipo={tipo}")
 
                 # Generar el prompt
                 try:
                     prompt = PROMPT_BASE.format(
                         contexto=contexto,
-                        mensaje=mensaje,
+                        ultimomensaje=ultimomensaje,
                         fechayhoraprompt=fechayhoraprompt,
                         tipo=tipo
                     )
@@ -134,13 +134,13 @@ def interpretar_mensaje(
                     logger.error(f"Error al conectarse a OpenAI: {e}")
                     return "Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
 
-                # Guardar el mensaje del usuario y la respuesta del bot
+                # Guardar el último mensaje del usuario y la respuesta del bot
                 try:
                     cursor.execute("""
                         INSERT INTO mensajes (usuario_id, mensaje, es_respuesta, timestamp)
                         VALUES (%s, %s, %s, NOW()), (%s, %s, %s, NOW());
                     """, (
-                        str(numero_usuario), mensaje, False,
+                        str(numero_usuario), ultimomensaje, False,
                         str(numero_usuario), respuesta_texto, True
                     ))
                     conn.commit()
@@ -184,7 +184,7 @@ Luego de haber leído el contexto de la conversación con el usuario, este GPT d
 El asistente debe utilizar emojis de la manera más variada, activa y relevante que pueda en cada respuesta, alineándose con el tema tratado. Prohibido usar este emoji: 😊.
 
 CONTEXTO DE CONVERSACIÓN
-Contexto: {contexto}. Mensaje: {mensaje}. Esto te permitirá evitar preguntas redundantes y, mediante un análisis detallado, identificar con precisión el objetivo de la consulta del usuario.
+Contexto: {contexto}. Mensaje: {ultimomensaje}. Esto te permitirá evitar preguntas redundantes y, mediante un análisis detallado, identificar con precisión el objetivo de la consulta del usuario.
 Si detectas que este es la primera interacción con el usuario, o que no ha habido interacción durante 24 horas, anexaras lo siguiente al final del mensaje: “Aviso de Privacidad: http://bit.ly/3PPhnmm”.
 Ejemplo 1: 
 Usuario: Hola (y se detecta que es el primer mensaje o que no ha habido interacción en 24 horas).
