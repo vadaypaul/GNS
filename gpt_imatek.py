@@ -32,6 +32,14 @@ DB_CONFIG = {
     "port": os.getenv("DB_PORT_IMATEK")
 }
 
+# Definición de PROMPT_BASE (por seguridad lo incluyo aquí)
+PROMPT_BASE = """
+Contexto: {contexto}
+Mensaje: {mensaje}
+Fecha y hora: {fechayhoraprompt}
+Tipo: {tipo}
+"""
+
 # Función para sanitizar texto dinámico
 def sanitizar_texto(texto):
     """
@@ -80,11 +88,18 @@ def interpretar_mensaje(
                     for h in reversed(historial)
                 ) if historial else "Sin historial previo."
 
+                # Logs para debug
+                logger.debug(f"Historial recuperado: {historial}")
+                logger.debug(f"Contexto generado: {contexto}")
+
                 # Sanitizar otros valores
-                contexto = sanitizar_texto(contexto)
-                mensaje = sanitizar_texto(mensaje)
+                contexto = sanitizar_texto(contexto) or "Sin contexto previo."
+                mensaje = sanitizar_texto(mensaje) or "Mensaje no proporcionado."
                 fechayhoraprompt = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                tipo = sanitizar_texto(tipo)
+                tipo = sanitizar_texto(tipo) or "Tipo no especificado."
+
+                # Logs para variables dinámicas
+                logger.debug(f"Variables dinámicas: mensaje={mensaje}, contexto={contexto}, fechayhoraprompt={fechayhoraprompt}, tipo={tipo}")
 
                 # Generar el prompt
                 try:
