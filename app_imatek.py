@@ -134,28 +134,30 @@ def obtener_nombre_usuario(sender_id):
         logger.error(f"Error al obtener el nombre del usuario: {e}")
         return "Usuario"
 
-def procesar_imagen_google_vision(contenido_imagen):
+def procesar_imagen_google_vision(contenido_imagen, ruta_credenciales):
     """
     Procesa imágenes usando Google Vision para extraer texto.
     """
     try:
-        # Inicializa el cliente de Google Vision usando la ruta de credenciales desde las variables de entorno
-        ruta_credenciales = os.getenv("GOOGLE_VISION_CREDENTIALS")
+        # Validar si la ruta de credenciales es proporcionada
         if not ruta_credenciales:
-            logger.error("La ruta de credenciales para Google Vision no está configurada.")
+            logger.error("La ruta de credenciales para Google Vision no está configurada o no fue proporcionada.")
             return None
 
+        # Inicializar el cliente de Google Vision
         client = vision.ImageAnnotatorClient.from_service_account_json(ruta_credenciales)
         imagen = vision.Image(content=contenido_imagen)
         respuesta = client.text_detection(image=imagen)
         texto_detectado = respuesta.text_annotations
 
+        # Verificar si se detectó texto en la imagen
         if not texto_detectado:
             logger.info("No se detectó texto en la imagen.")
             return None
 
         texto_extraido = texto_detectado[0].description.strip()
         return texto_extraido
+
     except Exception as e:
         logger.error(f"Error procesando la imagen con Google Vision API: {e}")
         return None
