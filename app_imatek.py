@@ -10,7 +10,6 @@ import psycopg2
 from psycopg2 import sql
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from google.cloud import vision
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +22,6 @@ app = Flask(__name__)
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_IMATEK")
 VERIFY_TOKEN = os.getenv("FACEBOOK_VERIFY_TOKEN_IMATEK")
 APP_SECRET = os.getenv("APP_SECRET_IMATEK")
-GOOGLE_VISION_CREDENTIALS = os.getenv("GOOGLE_VISION_CREDENTIALS")
 
 # Configuración de la base de datos PostgreSQL
 DB_HOST = os.getenv("DB_HOST_IMATEK")
@@ -34,7 +32,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD_IMATEK")
 
 # Estructura para evitar duplicados
 PROCESSED_EVENTS = {}
-EVENT_RETENTION_TIME = 24 * 60 * 60  # 24 horas
+EVENT_RETENTION_TIME = 60  # Retención de eventos reducida a 60 segundos
 
 # Configuración de Flask-Limiter
 limiter = Limiter(
@@ -146,11 +144,14 @@ def webhook():
                 entry_id = entry.get('id')
                 timestamp = time.time()
 
-                if entry_id in PROCESSED_EVENTS and timestamp - PROCESSED_EVENTS[entry_id] < EVENT_RETENTION_TIME:
-                    logger.info(f"Evento duplicado ignorado: {entry_id}")
-                    continue
+                # Validar si el evento es duplicado
+                if entry_id in PROCESSED_EVENTS:
+                    if timestamp - PROCESSED_EVENTS[entry_id] < EVENT_RETENTION_TIME:
+                        logger.info(f"Evento duplicado ignorado: {entry_id}")
+                        continue
 
                 PROCESSED_EVENTS[entry_id] = timestamp
+                logger.debug(f"Evento recibido con ID único: {entry_id}")
 
                 for event in entry['messaging']:
                     if 'message' in event:
