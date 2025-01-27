@@ -141,20 +141,23 @@ def webhook():
         body = request.get_json()
         if body.get('object') == 'page':
             for entry in body['entry']:
-                entry_id = entry.get('id')
                 timestamp = time.time()
 
-                # Validar si el evento es duplicado
-                if entry_id in PROCESSED_EVENTS:
-                    if timestamp - PROCESSED_EVENTS[entry_id] < EVENT_RETENTION_TIME:
-                        logger.info(f"Evento duplicado ignorado: {entry_id}")
-                        continue
-
-                PROCESSED_EVENTS[entry_id] = timestamp
-                logger.debug(f"Evento recibido con ID único: {entry_id}")
-
                 for event in entry['messaging']:
-                    if 'message' in event:
+                    # Usar 'message.id' para identificar eventos únicos
+                    if 'message' in event and 'mid' in event['message']:
+                        message_id = event['message']['mid']
+
+                        # Validar si el mensaje es duplicado
+                        if message_id in PROCESSED_EVENTS:
+                            if timestamp - PROCESSED_EVENTS[message_id] < EVENT_RETENTION_TIME:
+                                logger.info(f"Mensaje duplicado ignorado: {message_id}")
+                                continue
+
+                        PROCESSED_EVENTS[message_id] = timestamp
+                        logger.debug(f"Mensaje recibido con ID único: {message_id}")
+
+                        # Manejar el mensaje
                         manejar_mensaje(event)
                     else:
                         logger.warning("Evento recibido sin mensaje válido.")
