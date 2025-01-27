@@ -1,4 +1,9 @@
-# Importar librerías estándar
+# Compuesto por:
+# sanitizar_texto
+# interpretar_mensaje
+# mantener_conexion_activa
+# prompt_base
+
 import os
 import re
 import json
