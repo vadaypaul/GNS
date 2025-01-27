@@ -47,10 +47,11 @@ DB_PASSWORD = os.getenv("DB_PASSWORD_IMATEK")
 PROCESSED_EVENTS = {}
 EVENT_RETENTION_TIME = 60  # Retención de eventos reducida a 60 segundos
 
-# Configuración de Flask-Limiter
+# Configuración de Flask-Limiter con backend de memoria
 limiter = Limiter(
     key_func=get_remote_address,
-    app=app
+    app=app,
+    storage_uri="memory://"
 )
 
 @app.route("/")
