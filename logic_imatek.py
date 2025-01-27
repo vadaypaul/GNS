@@ -5,7 +5,11 @@ from gpt_imatek import interpretar_mensaje
 from reporting_imatek import generar_reporte
 from gpt_imatek import PROMPT_BASE
 from datetime import datetime
+import logging
 
+# Configuración básica de logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Función para conectar a la base de datos PostgreSQL
 def conectar_db():
@@ -20,11 +24,14 @@ def conectar_db():
             host=os.getenv("DB_HOST_IMATEK"),
             port=os.getenv("DB_PORT_IMATEK")
         )
+        logger.info("Conexión exitosa a la base de datos.")
         return conexion
-    except Exception as e:
-        print(f"Error al conectar con la base de datos: {e}")
+    except psycopg2.OperationalError as e:
+        logger.error(f"Error al conectar con la base de datos: {e}")
         return None
-
+    except Exception as e:
+        logger.error(f"Error inesperado al conectar con la base de datos: {e}")
+        return None
 
 # Función para obtener el historial de mensajes
 def obtener_historial(usuario_id):
@@ -33,6 +40,7 @@ def obtener_historial(usuario_id):
     """
     conexion = conectar_db()
     if not conexion:
+        logger.warning("No se pudo establecer conexión para obtener el historial.")
         return []
 
     try:
@@ -45,13 +53,15 @@ def obtener_historial(usuario_id):
                 LIMIT 10
             """
             cursor.execute(query, (usuario_id,))
-            return cursor.fetchall()
+            historial = cursor.fetchall()
+            if not historial:
+                logger.info(f"El historial para el usuario '{usuario_id}' está vacío.")
+            return historial
     except Exception as e:
-        print(f"Error al obtener historial: {e}")
+        logger.error(f"Error al obtener historial: {e}")
         return []
     finally:
         conexion.close()
-
 
 # Función para guardar un nuevo mensaje en la base de datos
 def guardar_mensaje(usuario_id, mensaje, nombre_usuario="Usuario", es_respuesta=False):
@@ -60,6 +70,7 @@ def guardar_mensaje(usuario_id, mensaje, nombre_usuario="Usuario", es_respuesta=
     """
     conexion = conectar_db()
     if not conexion:
+        logger.warning("No se pudo establecer conexión para guardar el mensaje.")
         return
 
     try:
@@ -70,11 +81,11 @@ def guardar_mensaje(usuario_id, mensaje, nombre_usuario="Usuario", es_respuesta=
             """
             cursor.execute(query, (usuario_id, mensaje, es_respuesta, datetime.now()))
             conexion.commit()
+            logger.info(f"Mensaje guardado exitosamente para el usuario {usuario_id}.")
     except Exception as e:
-        print(f"Error al guardar mensaje: {e}")
+        logger.error(f"Error al guardar mensaje: {e}")
     finally:
         conexion.close()
-
 
 # Función para limitar el historial del usuario
 def limitar_historial(usuario_id):
@@ -83,6 +94,7 @@ def limitar_historial(usuario_id):
     """
     conexion = conectar_db()
     if not conexion:
+        logger.warning("No se pudo establecer conexión para limitar el historial.")
         return
 
     try:
@@ -99,11 +111,11 @@ def limitar_historial(usuario_id):
             """
             cursor.execute(query, (usuario_id,))
             conexion.commit()
+            logger.info(f"Historial del usuario {usuario_id} limitado exitosamente.")
     except Exception as e:
-        print(f"Error al limitar historial: {e}")
+        logger.error(f"Error al limitar historial: {e}")
     finally:
         conexion.close()
-
 
 # Función principal para procesar mensajes
 def procesar_mensaje(mensaje, usuario_id):
@@ -118,7 +130,7 @@ def procesar_mensaje(mensaje, usuario_id):
         texto_mensaje = mensaje["texto"]
         nombre_usuario = mensaje["nombre_usuario"]
 
-        print(f"Procesando mensaje: '{texto_mensaje}' para usuario: {usuario_id} ({nombre_usuario})")
+        logger.info(f"Procesando mensaje: '{texto_mensaje}' para usuario: {usuario_id} ({nombre_usuario})")
 
         # Validar entradas
         if not isinstance(usuario_id, (str, int)):
@@ -168,5 +180,5 @@ def procesar_mensaje(mensaje, usuario_id):
         return respuesta_gpt
 
     except Exception as e:
-        print(f"Error inesperado en procesar_mensaje: {e}")
+        logger.error(f"Error inesperado en procesar_mensaje: {e}")
         return f"Hubo un problema al procesar tu mensaje. Por favor, intenta nuevamente."
