@@ -6,6 +6,7 @@ from reporting_imatek import generar_reporte
 from gpt_imatek import PROMPT_BASE
 from datetime import datetime
 
+
 # Función para conectar a la base de datos PostgreSQL
 def conectar_db():
     """
@@ -24,6 +25,7 @@ def conectar_db():
         print(f"Error al conectar con la base de datos: {e}")
         return None
 
+
 # Función para obtener el historial de mensajes
 def obtener_historial(usuario_id):
     """
@@ -36,10 +38,10 @@ def obtener_historial(usuario_id):
     try:
         with conexion.cursor(cursor_factory=RealDictCursor) as cursor:
             query = """
-                SELECT mensaje, fecha
+                SELECT mensaje, to_char(timestamp, 'DD/MM/YYYY HH24:MI:SS') as fecha
                 FROM mensajes
                 WHERE usuario_id = %s
-                ORDER BY fecha DESC
+                ORDER BY timestamp DESC
                 LIMIT 10
             """
             cursor.execute(query, (usuario_id,))
@@ -50,8 +52,9 @@ def obtener_historial(usuario_id):
     finally:
         conexion.close()
 
+
 # Función para guardar un nuevo mensaje en la base de datos
-def guardar_mensaje(usuario_id, mensaje, nombre_usuario="Usuario"):
+def guardar_mensaje(usuario_id, mensaje, nombre_usuario="Usuario", es_respuesta=False):
     """
     Guarda un nuevo mensaje en la base de datos.
     """
@@ -62,15 +65,16 @@ def guardar_mensaje(usuario_id, mensaje, nombre_usuario="Usuario"):
     try:
         with conexion.cursor() as cursor:
             query = """
-                INSERT INTO mensajes (usuario_id, mensaje, nombre_usuario, fecha)
+                INSERT INTO mensajes (usuario_id, mensaje, es_respuesta, timestamp)
                 VALUES (%s, %s, %s, %s)
             """
-            cursor.execute(query, (usuario_id, mensaje, nombre_usuario, datetime.now()))
+            cursor.execute(query, (usuario_id, mensaje, es_respuesta, datetime.now()))
             conexion.commit()
     except Exception as e:
         print(f"Error al guardar mensaje: {e}")
     finally:
         conexion.close()
+
 
 # Función para limitar el historial del usuario
 def limitar_historial(usuario_id):
@@ -89,7 +93,7 @@ def limitar_historial(usuario_id):
                     SELECT id
                     FROM mensajes
                     WHERE usuario_id = %s
-                    ORDER BY fecha DESC
+                    ORDER BY timestamp DESC
                     OFFSET 10
                 )
             """
@@ -99,6 +103,7 @@ def limitar_historial(usuario_id):
         print(f"Error al limitar historial: {e}")
     finally:
         conexion.close()
+
 
 # Función principal para procesar mensajes
 def procesar_mensaje(mensaje, usuario_id):
@@ -121,8 +126,8 @@ def procesar_mensaje(mensaje, usuario_id):
         if not isinstance(texto_mensaje, str) or not texto_mensaje.strip():
             raise ValueError("El texto del mensaje debe ser un string no vacío.")
 
-        # Guardar el mensaje en la base de datos
-        guardar_mensaje(usuario_id, texto_mensaje, nombre_usuario)
+        # Guardar el mensaje en la base de datos como entrada del usuario
+        guardar_mensaje(usuario_id, texto_mensaje, nombre_usuario, es_respuesta=False)
 
         # Limitar el historial del usuario
         limitar_historial(usuario_id)
@@ -144,10 +149,13 @@ def procesar_mensaje(mensaje, usuario_id):
 
         # Interpretar el mensaje con GPT
         respuesta_gpt = interpretar_mensaje(
-            mensaje=texto_mensaje,
+            mensaje=prompt,  # Enviamos el prompt completo
             numero_usuario=str(usuario_id),
             nombre_usuario=nombre_usuario
         )
+
+        # Guardar la respuesta en la base de datos como respuesta del bot
+        guardar_mensaje(usuario_id, respuesta_gpt, "GPT", es_respuesta=True)
 
         # Generar reporte
         generar_reporte(
