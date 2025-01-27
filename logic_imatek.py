@@ -6,6 +6,7 @@ from reporting_imatek import generar_reporte
 from gpt_imatek import PROMPT_BASE
 from datetime import datetime
 import logging
+import traceback
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO)
@@ -117,11 +118,6 @@ def limitar_historial(usuario_id):
     finally:
         conexion.close()
 
-import traceback  # Importación necesaria para manejar trazas de errores detalladas
-
-import traceback
-from datetime import datetime
-
 # Función principal para procesar mensajes
 def procesar_mensaje(mensaje, usuario_id):
     """
@@ -134,23 +130,23 @@ def procesar_mensaje(mensaje, usuario_id):
         if "texto" not in mensaje or "nombre_usuario" not in mensaje:
             raise ValueError("El diccionario 'mensaje' debe contener las claves 'texto' y 'nombre_usuario'.")
 
-        texto_mensaje = mensaje.get("texto", "").strip()
+        ultimomensaje = mensaje.get("texto", "").strip()
         nombre_usuario = mensaje.get("nombre_usuario", "").strip()
 
         # Validar que usuario_id sea un string o entero
         if not isinstance(usuario_id, (str, int)):
             raise TypeError("El parámetro 'usuario_id' debe ser un string o un entero.")
-        if not texto_mensaje:
+        if not ultimomensaje:
             raise ValueError("El texto del mensaje no puede estar vacío.")
         if not nombre_usuario:
             logger.warning(f"Nombre de usuario no proporcionado para usuario_id {usuario_id}. Usando 'Usuario'.")
             nombre_usuario = "Usuario"
 
-        logger.info(f"Procesando mensaje: '{texto_mensaje}' para usuario: {usuario_id} ({nombre_usuario})")
+        logger.info(f"Procesando mensaje: '{ultimomensaje}' para usuario: {usuario_id} ({nombre_usuario})")
 
         # Guardar el mensaje del usuario en la base de datos
         try:
-            guardar_mensaje(usuario_id, texto_mensaje, nombre_usuario, es_respuesta=False)
+            guardar_mensaje(usuario_id, ultimomensaje, nombre_usuario, es_respuesta=False)
             logger.info(f"Mensaje guardado exitosamente en la base de datos para usuario: {usuario_id}.")
         except Exception as db_error:
             logger.error(f"Error al guardar el mensaje del usuario en la base de datos: {db_error}")
@@ -182,7 +178,7 @@ def procesar_mensaje(mensaje, usuario_id):
         try:
             prompt = PROMPT_BASE.format(
                 contexto=contexto_dinamico,
-                pregunta=texto_mensaje,
+                ultimomensaje=ultimomensaje,
                 fechayhoraprompt=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                 tipo="texto"
             )
@@ -193,7 +189,7 @@ def procesar_mensaje(mensaje, usuario_id):
         # Interpretar el mensaje con GPT
         try:
             respuesta_gpt = interpretar_mensaje(
-                mensajeentero=prompt,  # Enviamos el prompt completo
+                ultimomensaje=ultimomensaje,
                 numero_usuario=str(usuario_id),
                 nombre_usuario=nombre_usuario
             )
@@ -212,7 +208,7 @@ def procesar_mensaje(mensaje, usuario_id):
         # Generar reporte
         try:
             generar_reporte(
-                mensaje=texto_mensaje,
+                mensaje=ultimomensaje,
                 respuesta=respuesta_gpt,
                 contexto=contexto,
                 usuario_id=usuario_id
