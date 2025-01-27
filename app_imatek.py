@@ -1,19 +1,22 @@
 from flask import Flask, request
 from logic_imatek import procesar_mensaje
 import requests
-from google.cloud import vision
 import os
 import hashlib
 import hmac
 import time
 import logging
+import psycopg2
+from psycopg2 import sql
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from google.cloud import vision
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Inicialización de Flask
 app = Flask(__name__)
 
 # Configuración de tokens y claves de API
@@ -21,6 +24,13 @@ ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_IMATEK")
 VERIFY_TOKEN = os.getenv("FACEBOOK_VERIFY_TOKEN_IMATEK")
 APP_SECRET = os.getenv("APP_SECRET_IMATEK")
 GOOGLE_VISION_CREDENTIALS = os.getenv("GOOGLE_VISION_CREDENTIALS")
+
+# Configuración de la base de datos PostgreSQL
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 # Estructura para evitar duplicados
 PROCESSED_EVENTS = {}
@@ -36,6 +46,64 @@ limiter = Limiter(
 def home():
     return "Chatbot Clínica Imatek funcionando correctamente."
 
+# Función para conectar a la base de datos
+def conectar_db():
+    return psycopg2.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD
+    )
+
+# Función para guardar un mensaje en la base de datos
+def guardar_mensaje(usuario_id, mensaje, es_respuesta):
+    try:
+        conn = conectar_db()
+        with conn.cursor() as cursor:
+            query = """
+                INSERT INTO mensajes (usuario_id, mensaje, es_respuesta)
+                VALUES (%s, %s, %s);
+            """
+            cursor.execute(query, (usuario_id, mensaje, es_respuesta))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error al guardar el mensaje en la base de datos: {e}")
+    finally:
+        conn.close()
+
+# Función para obtener el historial de un usuario
+def obtener_historial(usuario_id, limite=10):
+    try:
+        conn = conectar_db()
+        with conn.cursor() as cursor:
+            query = """
+                SELECT mensaje, es_respuesta
+                FROM mensajes
+                WHERE usuario_id = %s
+                ORDER BY timestamp DESC
+                LIMIT %s;
+            """
+            cursor.execute(query, (usuario_id, limite))
+            resultados = cursor.fetchall()
+            return resultados[::-1]  # Ordenar cronológicamente
+    except Exception as e:
+        logger.error(f"Error al obtener el historial de la base de datos: {e}")
+        return []
+    finally:
+        conn.close()
+
+# Función para construir el contexto dinámico
+def construir_contexto(historial, mensaje_actual, nombre_usuario):
+    contexto = f"Conversación con {nombre_usuario}:\n"
+    for mensaje, es_respuesta in historial:
+        if es_respuesta:
+            contexto += f"Bot: {mensaje}\n"
+        else:
+            contexto += f"Usuario: {mensaje}\n"
+    contexto += f"Usuario: {mensaje_actual}\n"
+    return contexto
+
 # Función para obtener el nombre del usuario
 def obtener_nombre_usuario(sender_id):
     url = f"https://graph.facebook.com/{sender_id}?fields=first_name,last_name&access_token={ACCESS_TOKEN}"
@@ -49,8 +117,9 @@ def obtener_nombre_usuario(sender_id):
         return "Usuario"
 
 # Función para procesar imágenes con Google Vision
-def procesar_imagen_google_vision(contenido_imagen):
+def procesar_imagen_google_vision(contenido_imagen, sender_id, nombre_usuario):
     try:
+        # Inicialización del cliente de Google Vision
         client = vision.ImageAnnotatorClient.from_service_account_json(GOOGLE_VISION_CREDENTIALS)
         imagen = vision.Image(content=contenido_imagen)
         respuesta = client.text_detection(image=imagen)
@@ -58,12 +127,27 @@ def procesar_imagen_google_vision(contenido_imagen):
 
         if not texto_detectado:
             logger.info("No se detectó texto en la imagen.")
+            enviar_mensaje(sender_id, "No se detectó texto en la imagen enviada.")
             return None
 
+        # Extraer el texto detectado
         texto_extraido = texto_detectado[0].description
+
+        # Guardar el mensaje procesado en la base de datos
+        guardar_mensaje(sender_id, texto_extraido, False)
+
+        # Procesar el texto extraído como mensaje y generar respuesta
+        mensaje = {"texto": texto_extraido, "nombre_usuario": nombre_usuario}
+        respuesta = procesar_mensaje(mensaje, sender_id)
+
+        # Guardar la respuesta en la base de datos y enviarla al usuario
+        guardar_mensaje(sender_id, respuesta, True)
+        enviar_mensaje(sender_id, respuesta)
+
         return texto_extraido
     except Exception as e:
         logger.error(f"Error procesando la imagen con Google Vision API: {e}")
+        enviar_mensaje(sender_id, "Hubo un problema al procesar la imagen enviada.")
         return None
 
 # Webhook principal
@@ -131,38 +215,31 @@ def manejar_mensaje(event):
 
     if 'text' in event['message']:
         texto_mensaje = event['message']['text']
-        mensaje = {"texto": texto_mensaje, "nombre_usuario": nombre_usuario}
+
+        # Obtener historial del usuario
+        historial = obtener_historial(sender_id)
+
+        # Construir contexto dinámico
+        contexto = construir_contexto(historial, texto_mensaje, nombre_usuario)
+
+        # Procesar mensaje con contexto
+        mensaje = {"texto": contexto, "nombre_usuario": nombre_usuario}
         respuesta = procesar_mensaje(mensaje, sender_id)
+
+        # Guardar mensaje del usuario y respuesta del bot
+        guardar_mensaje(sender_id, texto_mensaje, False)
+        guardar_mensaje(sender_id, respuesta, True)
+
+        # Enviar respuesta al usuario
         enviar_mensaje(sender_id, respuesta)
 
     elif 'attachments' in event['message']:
         for attachment in event['message']['attachments']:
             tipo = attachment.get('type', 'unknown')
             if tipo == 'image':
-                procesar_imagen(attachment, sender_id, nombre_usuario)
+                procesar_imagen_google_vision(attachment, sender_id, nombre_usuario)
             else:
                 enviar_mensaje(sender_id, f"No puedo procesar adjuntos de tipo: {tipo}")
-
-# Función para procesar imágenes adjuntas
-def procesar_imagen(attachment, sender_id, nombre_usuario):
-    image_url = attachment['payload']['url']
-    try:
-        image_response = requests.get(image_url)
-        if image_response.status_code == 200:
-            contenido_imagen = image_response.content
-            texto_procesado = procesar_imagen_google_vision(contenido_imagen)
-            if texto_procesado:
-                mensaje = {"texto": texto_procesado, "nombre_usuario": nombre_usuario}
-                respuesta = procesar_mensaje(mensaje, sender_id)
-                enviar_mensaje(sender_id, respuesta)
-            else:
-                enviar_mensaje(sender_id, "No se pudo procesar la imagen.")
-        else:
-            logger.error(f"Error al descargar la imagen: {image_response.status_code}")
-            enviar_mensaje(sender_id, "No se pudo descargar la imagen.")
-    except Exception as e:
-        logger.error(f"Error al procesar la imagen: {e}")
-        enviar_mensaje(sender_id, "Hubo un problema al procesar la imagen enviada.")
 
 # Función para enviar mensajes
 def enviar_mensaje(sender_id, mensaje):
