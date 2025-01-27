@@ -193,7 +193,7 @@ def procesar_mensaje(mensaje, usuario_id):
         # Interpretar el mensaje con GPT
         try:
             respuesta_gpt = interpretar_mensaje(
-                mensaje=prompt,  # Enviamos el prompt completo
+                mensajeentero=prompt,  # Enviamos el prompt completo
                 numero_usuario=str(usuario_id),
                 nombre_usuario=nombre_usuario
             )
