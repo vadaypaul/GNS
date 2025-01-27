@@ -1,3 +1,6 @@
+# Compuesto por:
+# generar_reporte
+
 import logging
 from datetime import datetime
 import traceback
