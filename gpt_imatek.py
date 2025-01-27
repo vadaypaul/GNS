@@ -1,18 +1,14 @@
-import json
-import openai
+# Importar librerías estándar
 import os
-from datetime import datetime
-from requests.exceptions import RequestException
-import time
-from threading import Thread
+import re
+import json
+import logging
+import openai
 import psycopg2
 from psycopg2.extras import DictCursor
 from datetime import datetime
-import openai
 from threading import Thread
 import time
-import re
-import logging
 
 # Configuración del logger
 logger = logging.getLogger("GPT_Imatek")
@@ -22,9 +18,10 @@ formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-# Configura tu clave de API de OpenAI
+# Configuración de OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY_VADAY")
-logger.info(f"Clave de API de OpenAI cargada correctamente.")
+OPENAI_TIMEOUT = 10  # Tiempo de espera para solicitudes a OpenAI
+logger.info("Clave de API de OpenAI cargada correctamente.")
 
 # Configuración de conexión a la base de datos
 DB_CONFIG = {
@@ -37,47 +34,131 @@ DB_CONFIG = {
 
 # Función para sanitizar texto dinámico
 def sanitizar_texto(texto):
+    """
+    Limpia y valida cadenas de texto, eliminando caracteres no deseados.
+    """
     if not isinstance(texto, str):
         return "Texto no válido"
     return re.sub(r"[^\w\s.,!?áéíóúÁÉÍÓÚñÑ]", "", texto).strip()
 
-try:
-    # Variables base (Simulación: estas deben venir de tu flujo)
-    numero_usuario = "12345"  # Reemplazar con el ID real del usuario
-    mensaje = "Hola, ¿me ayudas?"  # Reemplazar con el mensaje real recibido
-    nombre_usuario = "Usuario"  # Valor predeterminado para el nombre
-    historial = []
+# Función principal para interpretar mensajes
+def interpretar_mensaje(
+    mensaje,
+    numero_usuario,
+    nombre_usuario="Usuario",
+    tipo="Consulta médica",  # Se añade el tipo como valor predeterminado
+    modelo_gpt="gpt-4o-mini",
+    max_tokens=500,
+    temperature=0.7
+):
+    """
+    Usa GPT para interpretar el mensaje del usuario y generar una respuesta.
+    Obtiene y actualiza el historial desde PostgreSQL.
+    """
+    if not isinstance(mensaje, str) or not mensaje.strip():
+        raise ValueError("El parámetro 'mensaje' debe ser una cadena no vacía.")
+    if not isinstance(numero_usuario, (str, int)):
+        raise ValueError("El parámetro 'numero_usuario' debe ser un string o un entero.")
 
-    # Obtener historial desde la base de datos
-    with psycopg2.connect(**DB_CONFIG) as conn:
-        with conn.cursor(cursor_factory=DictCursor) as cursor:
-            cursor.execute("""
-                SELECT mensaje, es_respuesta, to_char(timestamp, 'DD/MM/YYYY HH24:MI:SS') as fecha
-                FROM mensajes
-                WHERE usuario_id = %s
-                ORDER BY timestamp DESC
-                LIMIT 10;
-            """, (str(numero_usuario),))
-            historial = cursor.fetchall()
+    try:
+        # Conectar a la base de datos
+        with psycopg2.connect(**DB_CONFIG) as conn:
+            with conn.cursor(cursor_factory=DictCursor) as cursor:
+                # Obtener el historial reciente
+                cursor.execute("""
+                    SELECT mensaje, es_respuesta, to_char(timestamp, 'DD/MM/YYYY HH24:MI:SS') as fecha
+                    FROM mensajes
+                    WHERE usuario_id = %s
+                    ORDER BY timestamp DESC
+                    LIMIT 10;
+                """, (str(numero_usuario),))
+                historial = cursor.fetchall()
 
-    # Validar y sanitizar el contexto
-    contexto = "\n".join(
-        f"{'GPT' if h['es_respuesta'] else nombre_usuario}: {h['mensaje']} ({h['fecha']})"
-        for h in reversed(historial)
-    ) if historial else "Sin historial previo."
-    contexto = sanitizar_texto(contexto)
+                # Construir el contexto dinámico
+                contexto = "\n".join(
+                    f"{'GPT' if h['es_respuesta'] else nombre_usuario}: {sanitizar_texto(h['mensaje'])} ({h['fecha']})"
+                    for h in reversed(historial)
+                ) if historial else "Sin historial previo."
 
-    # Validar y sanitizar el mensaje
-    mensaje = sanitizar_texto(mensaje)
-    if not mensaje:
-        raise ValueError("El mensaje no puede estar vacío.")
+                # Sanitizar otros valores
+                contexto = sanitizar_texto(contexto)
+                mensaje = sanitizar_texto(mensaje)
+                fechayhoraprompt = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                tipo = sanitizar_texto(tipo)
 
-    # Generar la fecha y hora actual para el prompt
-    fechayhoraprompt = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                # Generar el prompt
+                try:
+                    prompt = PROMPT_BASE.format(
+                        contexto=contexto,
+                        mensaje=mensaje,
+                        fechayhoraprompt=fechayhoraprompt,
+                        tipo=tipo
+                    )
+                    logger.info(f"Prompt generado exitosamente: {prompt[:100]}...")  # Log limitado a 100 caracteres
+                except KeyError as ke:
+                    logger.error(f"Clave faltante en PROMPT_BASE: {ke}")
+                    raise KeyError(f"Error al formatear el prompt. Clave faltante: {ke}")
+                except Exception as e:
+                    logger.error(f"Error inesperado al generar el prompt: {e}")
+                    raise ValueError(f"Error inesperado al generar el prompt: {e}")
 
-except Exception as e:
-    logger.error(f"Error al preparar los datos dinámicos para el prompt: {e}")
-    raise
+                # Enviar el mensaje a GPT
+                try:
+                    respuesta = openai.ChatCompletion.create(
+                        model=modelo_gpt,
+                        messages=[
+                            {"role": "system", "content": "Eres un asistente profesional para una clínica médica."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        timeout=OPENAI_TIMEOUT
+                    )
+                    respuesta_texto = respuesta["choices"][0]["message"]["content"].strip()
+                except Exception as e:
+                    logger.error(f"Error al conectarse a OpenAI: {e}")
+                    return "Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
+
+                # Guardar el mensaje del usuario y la respuesta del bot
+                try:
+                    cursor.execute("""
+                        INSERT INTO mensajes (usuario_id, mensaje, es_respuesta, timestamp)
+                        VALUES (%s, %s, %s, NOW()), (%s, %s, %s, NOW());
+                    """, (
+                        str(numero_usuario), mensaje, False,
+                        str(numero_usuario), respuesta_texto, True
+                    ))
+                    conn.commit()
+                except Exception as e:
+                    logger.error(f"Error al guardar mensajes en la base de datos: {e}")
+
+                return respuesta_texto
+
+    except Exception as e:
+        logger.error(f"Error inesperado en interpretar_mensaje: {e}")
+        return f"Hubo un error procesando tu mensaje. Por favor, intenta nuevamente."
+
+# Función para mantener conexión activa con OpenAI
+def mantener_conexion_activa():
+    """
+    Mantiene la conexión con OpenAI activa enviando solicitudes periódicas.
+    """
+    while True:
+        try:
+            logger.info("Verificando conexión con OpenAI...")
+            openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "ping"}],
+                max_tokens=5,
+                timeout=OPENAI_TIMEOUT
+            )
+            logger.info("Conexión exitosa.")
+        except Exception as e:
+            logger.error(f"Error al mantener la conexión activa: {e}")
+        time.sleep(300)  # Espera 5 minutos entre verificaciones
+
+# Lanzar un hilo para mantener la conexión activa
+Thread(target=mantener_conexion_activa, daemon=True).start()
 
 PROMPT_BASE = """
 ROL Y PERSONALIDAD
@@ -657,133 +738,3 @@ Puede visitarnos en la Avenida Tecnológico 6500, ubicada en la Colonia Parral. 
 ¿Le gustaría saber algo más específico sobre alguna de nuestras sucursales o los estudios que ofrecemos? 🩵"
 FIN DEL PROMPT
 """
-
-try:
-    # Generar el prompt
-    prompt = PROMPT_BASE.format(
-        contexto=contexto,
-        mensaje=mensaje,
-        fechayhoraprompt=fechayhoraprompt,
-    )
-    logger.info(f"Prompt generado exitosamente: {prompt[:100]}...")  # Muestra solo los primeros 100 caracteres
-except KeyError as ke:
-    logger.error(f"Clave faltante en el PROMPT_BASE: {ke}")
-    raise KeyError(f"Error al formatear el prompt. Clave faltante: {ke}")
-except Exception as e:
-    logger.error(f"Error inesperado al generar el prompt: {e}")
-    raise ValueError(f"Error inesperado al generar el prompt: {e}")
-
-# Configuración de la base de datos desde variables de entorno
-DB_CONFIG = {
-    "dbname": os.getenv("DB_NAME_IMATEK"),
-    "user": os.getenv("DB_USERNAME_IMATEK"),
-    "password": os.getenv("DB_PASSWORD_IMATEK"),
-    "host": os.getenv("DB_HOST_IMATEK"),
-    "port": os.getenv("DB_PORT_IMATEK")
-}
-
-# Configuración de OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY_VADAY")
-OPENAI_TIMEOUT = 10  # Tiempo de espera para las solicitudes a OpenAI
-
-
-def interpretar_mensaje(
-    mensaje,
-    numero_usuario,
-    nombre_usuario="Usuario",
-    modelo_gpt="gpt-4o-mini",
-    max_tokens=500,
-    temperature=0.7
-):
-    """
-    Usa GPT para interpretar el mensaje del usuario y generar una respuesta.
-    Obtiene y actualiza el historial desde PostgreSQL.
-    """
-    if not isinstance(mensaje, str) or not mensaje.strip():
-        raise ValueError("El parámetro 'mensaje' debe ser una cadena no vacía.")
-    if not isinstance(numero_usuario, (str, int)):
-        raise ValueError("El parámetro 'numero_usuario' debe ser un string o un entero.")
-
-    try:
-        # Conectar a la base de datos
-        with psycopg2.connect(**DB_CONFIG) as conn:
-            with conn.cursor(cursor_factory=DictCursor) as cursor:
-                # Obtener el historial reciente
-                cursor.execute("""
-                    SELECT mensaje, es_respuesta, to_char(timestamp, 'DD/MM/YYYY HH24:MI:SS') as fecha
-                    FROM mensajes
-                    WHERE usuario_id = %s
-                    ORDER BY timestamp DESC
-                    LIMIT 10;
-                """, (str(numero_usuario),))
-                historial = cursor.fetchall()
-
-                # Construir el contexto dinámico
-                if historial:
-                    contexto = "\n".join(
-                        f"{'GPT' if h['es_respuesta'] else nombre_usuario}: {h['mensaje']} ({h['fecha']})"
-                        for h in reversed(historial)
-                    )
-                else:
-                    contexto = "Sin historial previo."
-
-                # Construir el prompt
-                prompt = f"Eres un asistente profesional para una clínica médica.\n\nContexto:\n{contexto}\n\nPregunta del usuario:\n{mensaje}"
-
-                # Enviar el mensaje a GPT
-                try:
-                    respuesta = openai.ChatCompletion.create(
-                        model=modelo_gpt,
-                        messages=[
-                            {"role": "system", "content": "Eres un asistente profesional para una clínica médica."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        timeout=OPENAI_TIMEOUT
-                    )
-                    respuesta_texto = respuesta["choices"][0]["message"]["content"].strip()
-                except Exception as e:
-                    print(f"Error al conectarse a OpenAI: {e}")
-                    return "Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
-
-                # Guardar el mensaje del usuario y la respuesta del bot
-                try:
-                    cursor.execute("""
-                        INSERT INTO mensajes (usuario_id, mensaje, es_respuesta, timestamp)
-                        VALUES (%s, %s, %s, NOW()), (%s, %s, %s, NOW());
-                    """, (
-                        str(numero_usuario), mensaje, False,
-                        str(numero_usuario), respuesta_texto, True
-                    ))
-                    conn.commit()
-                except Exception as e:
-                    print(f"Error al guardar mensajes en la base de datos: {e}")
-
-                return respuesta_texto
-    except Exception as e:
-        print(f"Error inesperado en interpretar_mensaje: {e}")
-        return f"Hubo un error procesando tu mensaje. Por favor, intenta nuevamente."
-
-
-def mantener_conexion_activa():
-    """
-    Mantiene la conexión con OpenAI activa enviando solicitudes periódicas.
-    """
-    while True:
-        try:
-            print("Verificando conexión con OpenAI...")
-            openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "system", "content": "ping"}],
-                max_tokens=5,
-                timeout=OPENAI_TIMEOUT
-            )
-            print("Conexión exitosa.")
-        except Exception as e:
-            print(f"Error al mantener la conexión activa: {e}")
-        time.sleep(300)  # Espera 5 minutos entre verificaciones
-
-
-# Lanzar un hilo para mantener la conexión activa
-Thread(target=mantener_conexion_activa, daemon=True).start()
