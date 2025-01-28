@@ -45,13 +45,17 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
         # Obtener historial y fecha del penúltimo mensaje desde logic_imatek.py
         historial, fecha_penultimo_mensaje = obtener_historial(usuario_id)
 
+        print(f"[DEBUG] Historial obtenido para {usuario_id}: {historial}")
+        print(f"[DEBUG] Fecha del penúltimo mensaje: {fecha_penultimo_mensaje}")
+
         # Si no hay historial previo, agregar el aviso de privacidad
         if not historial:
-            print("No hay historial previo. Se debe agregar el aviso de privacidad.")
+            print("[DEBUG] No hay historial previo. Se debe agregar el aviso de privacidad.")
             return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
 
         # Si no hay penúltimo mensaje, no hacemos nada y devolvemos la respuesta tal cual
         if not fecha_penultimo_mensaje:
+            print("[DEBUG] No hay penúltimo mensaje, se envía la respuesta sin modificar.")
             return respuesta_actual
 
         # Convertir la fecha del penúltimo mensaje a objeto datetime
@@ -61,14 +65,20 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
         # Calcular la diferencia en segundos
         diferencia = (fecha_actual - fecha_penultimo_mensaje).total_seconds()
 
+        print(f"[DEBUG] Fecha actual: {fecha_actual}")
+        print(f"[DEBUG] Diferencia en segundos: {diferencia}")
+
         if diferencia > 30:
             # Si han pasado más de 30 segundos, agregar el aviso de privacidad al comienzo
+            print("[DEBUG] Han pasado más de 30 segundos. Se agregará el aviso de privacidad.")
             respuesta_actual = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
+        else:
+            print("[DEBUG] Han pasado menos de 30 segundos. No se agrega el aviso.")
 
         return respuesta_actual
 
     except Exception as e:
-        print(f"Error al verificar inactividad: {e}")
+        print(f"[ERROR] Error al verificar inactividad: {e}")
         return respuesta_actual
     
 def enviar_mensaje(sender_id, respuesta):
