@@ -1,8 +1,3 @@
-# Compuesto por:
-# log_mensaje
-# verificar_inactividad_y_modificar_respuesta
-# enviar_mensaje
-
 import psycopg2
 from datetime import datetime
 import requests
@@ -37,25 +32,30 @@ def log_mensaje(sender_id, respuesta, error=None):
 
 def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
     """
-    Verifica si han pasado más de 30 segundos desde el penúltimo mensaje del usuario.
+    Verifica si han pasado más de 30 segundos desde el último mensaje del usuario.
     Si es así, agrega el aviso de privacidad al inicio de la respuesta.
-    Si el usuario es nuevo, también agrega el aviso.
     """
     try:
-        # Obtener historial y fecha del penúltimo mensaje
+        print(f"\n\n[DEBUG] Ejecutando verificar_inactividad_y_modificar_respuesta() para {usuario_id}")
+
+        # Obtener historial de mensajes
         historial, fecha_penultimo_mensaje = obtener_historial(usuario_id)
 
-        print(f"\n\n[DEBUG] Historial obtenido para {usuario_id}: {historial}")
+        print(f"[DEBUG] Historial crudo obtenido: {historial}")
         print(f"[DEBUG] Fecha del penúltimo mensaje (antes de conversión): {fecha_penultimo_mensaje}")
 
-        # Si no hay historial previo, agregar el aviso de privacidad
-        if not historial:
-            print("[DEBUG] No hay historial previo. Se agregará el aviso de privacidad.")
+        # Filtrar solo los mensajes enviados por el usuario
+        mensajes_usuario = [m for m in historial if m[1] is False]
+
+        if not mensajes_usuario:
+            print("[DEBUG] No hay mensajes del usuario en el historial. Se enviará el aviso de privacidad.")
             return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
 
-        # Si no hay penúltimo mensaje, no hacemos nada y devolvemos la respuesta tal cual
+        # Obtener la fecha del último mensaje del usuario
+        fecha_penultimo_mensaje = mensajes_usuario[-1][2]
+
         if not fecha_penultimo_mensaje:
-            print("[DEBUG] No hay penúltimo mensaje, se envía la respuesta sin modificar.")
+            print("[DEBUG] No se encontró un mensaje anterior válido del usuario.")
             return respuesta_actual
 
         # Convertir la fecha del penúltimo mensaje a objeto datetime
@@ -64,7 +64,7 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
             print(f"[DEBUG] Fecha del penúltimo mensaje (después de conversión): {fecha_penultimo_mensaje_dt}")
         except ValueError as e:
             print(f"[ERROR] Error al convertir la fecha del penúltimo mensaje: {e}")
-            return respuesta_actual  # En caso de error, enviamos la respuesta sin modificar.
+            return respuesta_actual  # En caso de error, enviar la respuesta sin modificar
 
         fecha_actual = datetime.now()
         diferencia = (fecha_actual - fecha_penultimo_mensaje_dt).total_seconds()
@@ -72,7 +72,7 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
         print(f"[DEBUG] Fecha actual: {fecha_actual}")
         print(f"[DEBUG] Diferencia en segundos desde el último mensaje: {diferencia}")
 
-        # Si han pasado más de 30 segundos, agregar el aviso de privacidad al comienzo
+        # Si han pasado más de 30 segundos, agregar el aviso de privacidad
         if diferencia > 30:
             print("[DEBUG] Han pasado más de 30 segundos. Se agregará el aviso de privacidad.")
             return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
@@ -90,6 +90,8 @@ def enviar_mensaje(sender_id, respuesta):
     """
     Envía un mensaje al usuario a través de la API de Facebook Messenger.
     """
+    print(f"\n\n[DEBUG] Ejecutando enviar_mensaje() para {sender_id}")
+
     # Verificar inactividad y posiblemente modificar la respuesta
     respuesta = verificar_inactividad_y_modificar_respuesta(sender_id, respuesta)
 
@@ -106,10 +108,10 @@ def enviar_mensaje(sender_id, respuesta):
         response.raise_for_status()  # Verifica si la solicitud fue exitosa
 
         # Registro de éxito
-        print(f"Mensaje enviado a {sender_id}: {respuesta}")
+        print(f"[DEBUG] Mensaje enviado a {sender_id}: {respuesta}")
         log_mensaje(sender_id, respuesta)
     except requests.exceptions.RequestException as e:
         # Manejo y registro de errores
-        error_msg = f"Error al enviar el mensaje: {str(e)}"
+        error_msg = f"[ERROR] Error al enviar el mensaje: {str(e)}"
         print(error_msg)
         log_mensaje(sender_id, respuesta, error=error_msg)
