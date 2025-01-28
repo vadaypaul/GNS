@@ -140,8 +140,9 @@ def procesar_imagen_google_vision(contenido_imagen, ruta_credenciales):
     """
     try:
         # Validar si la ruta de credenciales es proporcionada
-        if not ruta_credenciales:
-            logger.error("La ruta de credenciales para Google Vision no está configurada o no fue proporcionada.")
+        ruta_credenciales = "/etc/secrets/GOOGLE_VISION_CREDENTIALS"
+        if not os.path.exists(ruta_credenciales):
+            logger.error("El archivo de credenciales para Google Vision no existe en la ruta esperada.")
             return None
 
         # Inicializar el cliente de Google Vision
@@ -164,6 +165,7 @@ def procesar_imagen_google_vision(contenido_imagen, ruta_credenciales):
 
 @app.route('/webhook', methods=['GET', 'POST'])
 @limiter.limit("50 per minute")
+
 def webhook():
     if request.method == 'GET':
         mode = request.args.get('hub.mode')
