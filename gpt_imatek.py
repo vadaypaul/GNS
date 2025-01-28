@@ -175,7 +175,7 @@ def mantener_conexion_activa():
             logger.info("Conexión exitosa.")
         except Exception as e:
             logger.error(f"Error al mantener la conexión activa: {e}")
-        time.sleep(300)  # Espera 5 minutos entre verificaciones
+        time.sleep(3600)  # Espera 5 minutos entre verificaciones
 
 # Lanzar un hilo para mantener la conexión activa
 Thread(target=mantener_conexion_activa, daemon=True).start()
