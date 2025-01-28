@@ -10,7 +10,7 @@ import os
 
 # Configuración básica de logging para Render
 logging.basicConfig(
-    level=logging.DEBUG,  # Captura todos los niveles de logs
+    level=logging.INFO,  # Captura todos los niveles de logs
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout)  # Envía todos los logs a stdout para Render
