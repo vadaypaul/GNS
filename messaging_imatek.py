@@ -43,6 +43,18 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
         # Conectar a la base de datos
         with psycopg2.connect(**DB_CONFIG) as conn:
             with conn.cursor() as cursor:
+                # Verificar si el usuario tiene mensajes previos
+                query_historial = """
+                    SELECT COUNT(*) FROM mensajes WHERE usuario_id = %s AND es_respuesta = FALSE;
+                """
+                cursor.execute(query_historial, (usuario_id,))
+                total_mensajes = cursor.fetchone()[0]
+
+                # Si no hay mensajes previos, es la primera interacción
+                if total_mensajes == 0:
+                    print("No hay historial previo. Se debe agregar el aviso de privacidad.")
+                    return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
+
                 # Obtener la fecha y hora del penúltimo mensaje del usuario
                 query = """
                     SELECT timestamp
@@ -55,8 +67,7 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
                 penultimo_mensaje = cursor.fetchone()
 
                 if not penultimo_mensaje:
-                    # Si no hay historial previo, agregar el aviso al comienzo
-                    return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
+                    return respuesta_actual  # Si no hay penúltimo mensaje, no hacemos nada
 
                 # Convertir la fecha del penúltimo mensaje a un objeto datetime
                 fecha_penultimo_mensaje = penultimo_mensaje[0]
@@ -70,6 +81,10 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
                     respuesta_actual = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
 
                 return respuesta_actual
+
+    except Exception as e:
+        print(f"Error al verificar inactividad: {e}")
+        return respuesta_actual
 
     except Exception as e:
         # Manejo de errores
