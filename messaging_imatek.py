@@ -8,6 +8,7 @@ from datetime import datetime
 import requests
 import os
 from logic_imatek import obtener_historial
+import traceback
 
 # Token de acceso proporcionado por Facebook
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_IMATEK")
@@ -36,40 +37,42 @@ def log_mensaje(sender_id, respuesta, error=None):
 
 def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
     """
-    Verifica si han pasado más de 30 segundos desde el penúltimo mensaje del usuario
-    y, si es así, agrega el aviso de privacidad al comienzo de la respuesta.
-    Si no hay historial previo, también agrega el aviso.
+    Verifica si han pasado más de 30 segundos desde el penúltimo mensaje del usuario.
+    Si es así, agrega el aviso de privacidad al inicio de la respuesta.
+    Si el usuario es nuevo, también agrega el aviso.
     """
-
     try:
-        # Obtener historial y fecha del penúltimo mensaje desde logic_imatek.py
+        # Obtener historial y fecha del penúltimo mensaje
         historial, fecha_penultimo_mensaje = obtener_historial(usuario_id)
 
         print(f"[DEBUG] Historial obtenido para {usuario_id}: {historial}")
         print(f"[DEBUG] Fecha del penúltimo mensaje: {fecha_penultimo_mensaje}")
 
-        # Si no hay historial previo, agregar el aviso de privacidad
+        # Caso 1: No hay historial previo (Usuario nuevo)
         if not historial:
-            print("[DEBUG] No hay historial previo. Se debe agregar el aviso de privacidad.")
+            print("[DEBUG] No hay historial previo. Se agregará el aviso de privacidad.")
             return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
 
-        # Si no hay penúltimo mensaje, no hacemos nada y devolvemos la respuesta tal cual
+        # Caso 2: No hay penúltimo mensaje (primer mensaje del usuario)
         if not fecha_penultimo_mensaje:
-            print("[DEBUG] No hay penúltimo mensaje, se envía la respuesta sin modificar.")
+            print("[DEBUG] No hay penúltimo mensaje registrado. Se envía la respuesta sin modificar.")
             return respuesta_actual
 
         # Convertir la fecha del penúltimo mensaje a objeto datetime
-        fecha_penultimo_mensaje = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
-        fecha_actual = datetime.now()
+        try:
+            fecha_penultimo_mensaje = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
+        except ValueError as e:
+            print(f"[ERROR] Error al convertir la fecha del penúltimo mensaje: {e}")
+            return respuesta_actual  # En caso de error, enviamos la respuesta sin modificar.
 
-        # Calcular la diferencia en segundos
+        fecha_actual = datetime.now()
         diferencia = (fecha_actual - fecha_penultimo_mensaje).total_seconds()
 
         print(f"[DEBUG] Fecha actual: {fecha_actual}")
         print(f"[DEBUG] Diferencia en segundos: {diferencia}")
 
+        # Caso 3: Si han pasado más de 30 segundos desde el último mensaje del usuario
         if diferencia > 30:
-            # Si han pasado más de 30 segundos, agregar el aviso de privacidad al comienzo
             print("[DEBUG] Han pasado más de 30 segundos. Se agregará el aviso de privacidad.")
             respuesta_actual = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
         else:
@@ -79,8 +82,9 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
 
     except Exception as e:
         print(f"[ERROR] Error al verificar inactividad: {e}")
-        return respuesta_actual
-    
+        traceback.print_exc()
+        return respuesta_actual  # Si ocurre un error, enviamos la respuesta sin modificar.
+        
 def enviar_mensaje(sender_id, respuesta):
     """
     Envía un mensaje al usuario a través de la API de Facebook Messenger.
