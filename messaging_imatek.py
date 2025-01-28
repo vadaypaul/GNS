@@ -45,36 +45,37 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
         # Obtener historial y fecha del penúltimo mensaje
         historial, fecha_penultimo_mensaje = obtener_historial(usuario_id)
 
-        print(f"[DEBUG] Historial obtenido para {usuario_id}: {historial}")
-        print(f"[DEBUG] Fecha del penúltimo mensaje: {fecha_penultimo_mensaje}")
+        print(f"\n\n[DEBUG] Historial obtenido para {usuario_id}: {historial}")
+        print(f"[DEBUG] Fecha del penúltimo mensaje (antes de conversión): {fecha_penultimo_mensaje}")
 
-        # Caso 1: No hay historial previo (Usuario nuevo)
+        # Si no hay historial previo, agregar el aviso de privacidad
         if not historial:
             print("[DEBUG] No hay historial previo. Se agregará el aviso de privacidad.")
             return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
 
-        # Caso 2: No hay penúltimo mensaje (primer mensaje del usuario)
+        # Si no hay penúltimo mensaje, no hacemos nada y devolvemos la respuesta tal cual
         if not fecha_penultimo_mensaje:
-            print("[DEBUG] No hay penúltimo mensaje registrado. Se envía la respuesta sin modificar.")
+            print("[DEBUG] No hay penúltimo mensaje, se envía la respuesta sin modificar.")
             return respuesta_actual
 
         # Convertir la fecha del penúltimo mensaje a objeto datetime
         try:
-            fecha_penultimo_mensaje = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
+            fecha_penultimo_mensaje_dt = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
+            print(f"[DEBUG] Fecha del penúltimo mensaje (después de conversión): {fecha_penultimo_mensaje_dt}")
         except ValueError as e:
             print(f"[ERROR] Error al convertir la fecha del penúltimo mensaje: {e}")
             return respuesta_actual  # En caso de error, enviamos la respuesta sin modificar.
 
         fecha_actual = datetime.now()
-        diferencia = (fecha_actual - fecha_penultimo_mensaje).total_seconds()
+        diferencia = (fecha_actual - fecha_penultimo_mensaje_dt).total_seconds()
 
         print(f"[DEBUG] Fecha actual: {fecha_actual}")
-        print(f"[DEBUG] Diferencia en segundos: {diferencia}")
+        print(f"[DEBUG] Diferencia en segundos desde el último mensaje: {diferencia}")
 
-        # Caso 3: Si han pasado más de 30 segundos desde el último mensaje del usuario
+        # Si han pasado más de 30 segundos, agregar el aviso de privacidad al comienzo
         if diferencia > 30:
             print("[DEBUG] Han pasado más de 30 segundos. Se agregará el aviso de privacidad.")
-            respuesta_actual = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
+            return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
         else:
             print("[DEBUG] Han pasado menos de 30 segundos. No se agrega el aviso.")
 
@@ -84,7 +85,7 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
         print(f"[ERROR] Error al verificar inactividad: {e}")
         traceback.print_exc()
         return respuesta_actual  # Si ocurre un error, enviamos la respuesta sin modificar.
-        
+            
 def enviar_mensaje(sender_id, respuesta):
     """
     Envía un mensaje al usuario a través de la API de Facebook Messenger.
