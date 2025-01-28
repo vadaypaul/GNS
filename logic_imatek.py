@@ -44,12 +44,13 @@ def conectar_db():
 # Función para obtener el historial de mensajes
 def obtener_historial(usuario_id):
     """
-    Obtiene los últimos 10 mensajes del historial del usuario desde la base de datos.
+    Obtiene los últimos 10 mensajes del historial del usuario desde la base de datos
+    y devuelve también la fecha del penúltimo mensaje si existe.
     """
     conexion = conectar_db()
     if not conexion:
         logger.warning("No se pudo establecer conexión para obtener el historial.")
-        return []
+        return [], None  # Retornamos historial vacío y sin fecha del penúltimo mensaje
 
     try:
         with conexion.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -62,12 +63,20 @@ def obtener_historial(usuario_id):
             """
             cursor.execute(query, (usuario_id,))
             historial = cursor.fetchall()
+
             if not historial:
                 logger.info(f"El historial para el usuario '{usuario_id}' está vacío.")
-            return historial
+                return [], None  # Si no hay historial, no hay penúltimo mensaje
+
+            # Obtener la fecha del penúltimo mensaje si hay al menos dos mensajes
+            fecha_penultimo_mensaje = historial[1]['fecha'] if len(historial) > 1 else None
+
+            return historial, fecha_penultimo_mensaje  # Retornamos ambos valores
+
     except Exception as e:
         logger.error(f"Error al obtener historial: {e}")
-        return []
+        return [], None  # En caso de error, devolvemos historial vacío y sin fecha del penúltimo mensaje
+
     finally:
         conexion.close()
 
