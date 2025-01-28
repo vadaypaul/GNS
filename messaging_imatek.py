@@ -4,9 +4,10 @@
 # enviar_mensaje
 
 import psycopg2
-from datetime import datetime, timedelta
+from datetime import datetime
 import requests
 import os
+from logic_imatek import obtener_historial
 
 # Token de acceso proporcionado por Facebook
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_IMATEK")
@@ -39,58 +40,37 @@ def verificar_inactividad_y_modificar_respuesta(usuario_id, respuesta_actual):
     y, si es así, agrega el aviso de privacidad al comienzo de la respuesta.
     Si no hay historial previo, también agrega el aviso.
     """
+
     try:
-        # Conectar a la base de datos
-        with psycopg2.connect(**DB_CONFIG) as conn:
-            with conn.cursor() as cursor:
-                # Verificar si el usuario tiene mensajes previos
-                query_historial = """
-                    SELECT COUNT(*) FROM mensajes WHERE usuario_id = %s AND es_respuesta = FALSE;
-                """
-                cursor.execute(query_historial, (usuario_id,))
-                total_mensajes = cursor.fetchone()[0]
+        # Obtener historial y fecha del penúltimo mensaje desde logic_imatek.py
+        historial, fecha_penultimo_mensaje = obtener_historial(usuario_id)
 
-                # Si no hay mensajes previos, es la primera interacción
-                if total_mensajes == 0:
-                    print("No hay historial previo. Se debe agregar el aviso de privacidad.")
-                    return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
+        # Si no hay historial previo, agregar el aviso de privacidad
+        if not historial:
+            print("No hay historial previo. Se debe agregar el aviso de privacidad.")
+            return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
 
-                # Obtener la fecha y hora del penúltimo mensaje del usuario
-                query = """
-                    SELECT timestamp
-                    FROM mensajes
-                    WHERE usuario_id = %s AND es_respuesta = FALSE
-                    ORDER BY timestamp DESC
-                    OFFSET 1 LIMIT 1;
-                """
-                cursor.execute(query, (usuario_id,))
-                penultimo_mensaje = cursor.fetchone()
+        # Si no hay penúltimo mensaje, no hacemos nada y devolvemos la respuesta tal cual
+        if not fecha_penultimo_mensaje:
+            return respuesta_actual
 
-                if not penultimo_mensaje:
-                    return respuesta_actual  # Si no hay penúltimo mensaje, no hacemos nada
+        # Convertir la fecha del penúltimo mensaje a objeto datetime
+        fecha_penultimo_mensaje = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
+        fecha_actual = datetime.now()
 
-                # Convertir la fecha del penúltimo mensaje a un objeto datetime
-                fecha_penultimo_mensaje = penultimo_mensaje[0]
-                fecha_actual = datetime.now()
+        # Calcular la diferencia en segundos
+        diferencia = (fecha_actual - fecha_penultimo_mensaje).total_seconds()
 
-                # Calcular la diferencia en segundos
-                diferencia = (fecha_actual - fecha_penultimo_mensaje).total_seconds()
+        if diferencia > 30:
+            # Si han pasado más de 30 segundos, agregar el aviso de privacidad al comienzo
+            respuesta_actual = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
 
-                if diferencia > 30:
-                    # Si han pasado más de 30 segundos, agregar el aviso de privacidad al comienzo
-                    respuesta_actual = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_actual}"
-
-                return respuesta_actual
+        return respuesta_actual
 
     except Exception as e:
         print(f"Error al verificar inactividad: {e}")
         return respuesta_actual
-
-    except Exception as e:
-        # Manejo de errores
-        print(f"Error al verificar inactividad: {e}")
-        return respuesta_actual
-
+    
 def enviar_mensaje(sender_id, respuesta):
     """
     Envía un mensaje al usuario a través de la API de Facebook Messenger.
