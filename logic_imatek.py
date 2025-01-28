@@ -57,7 +57,7 @@ def obtener_historial(usuario_id):
             query = """
                 SELECT mensaje, to_char(timestamp, 'DD/MM/YYYY HH24:MI:SS') as fecha
                 FROM mensajes
-                WHERE usuario_id = %s
+                WHERE usuario_id = %s AND es_respuesta = FALSE
                 ORDER BY timestamp DESC
                 LIMIT 10
             """
@@ -175,20 +175,23 @@ def procesar_mensaje(mensaje, usuario_id):
         except Exception as limit_error:
             logger.warning(f"Error al limitar el historial para el usuario {usuario_id}: {limit_error}")
 
-        # Obtener el contexto actualizado
+        # Obtener el contexto actualizado correctamente
         try:
-            contexto = obtener_historial(usuario_id)
+            contexto, _ = obtener_historial(usuario_id)  # Capturamos solo el historial, ignoramos la fecha del penúltimo mensaje
             logger.info(f"Historial obtenido exitosamente para usuario: {usuario_id}.")
         except Exception as hist_error:
             logger.error(f"Error al obtener el historial para el usuario {usuario_id}: {hist_error}")
             contexto = []
 
-        # Construir el contexto dinámico
+        # Construir el contexto dinámico solo con mensajes válidos
         contexto_filtrado = [
             f"{m['mensaje']} ({m['fecha']})"
-            for m in contexto if isinstance(m, dict) and "mensaje" in m and "fecha" in m
+            for m in contexto if isinstance(m, dict) and "mensaje" in m and "fecha" in m and m['mensaje']
         ]
+
+        # Convertir a string el contexto
         contexto_dinamico = "\n".join(contexto_filtrado) if contexto_filtrado else "Sin historial previo."
+
 
         # Crear el prompt dinámico
         try:
