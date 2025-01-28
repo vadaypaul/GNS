@@ -183,11 +183,19 @@ def procesar_mensaje(mensaje, usuario_id):
             logger.error(f"Error al obtener el historial para el usuario {usuario_id}: {hist_error}")
             contexto = []
 
-        # Construir el contexto dinámico solo con mensajes válidos
-        contexto_filtrado = [
-            f"{m['mensaje']} ({m['fecha']})"
-            for m in contexto if isinstance(m, dict) and "mensaje" in m and "fecha" in m and m['mensaje']
-        ]
+        # Construir el contexto dinámico con solo los mensajes recientes y sin duplicados
+        contexto_filtrado = []
+        mensajes_vistos = set()
+
+        for m in contexto:
+            if isinstance(m, dict) and "mensaje" in m and "fecha" in m:
+                mensaje = m["mensaje"].strip()
+                if mensaje and mensaje not in mensajes_vistos:
+                    contexto_filtrado.append(f"{mensaje} ({m['fecha']})")
+                    mensajes_vistos.add(mensaje)
+
+        contexto_dinamico = "\n".join(contexto_filtrado[-5:]) if contexto_filtrado else "Sin historial previo."
+
 
         # Convertir a string el contexto
         contexto_dinamico = "\n".join(contexto_filtrado) if contexto_filtrado else "Sin historial previo."
