@@ -295,11 +295,12 @@ def manejar_mensaje(event):
         guardar_mensaje(sender_id, texto_mensaje, False)
         guardar_mensaje(sender_id, respuesta, True)      
         
+
         # Enviar respuesta al usuario
-        respuesta_gpt = procesar_mensaje(mensaje, sender_id)
-        respuesta_final = verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_gpt)
+        respuesta_final = verificar_inactividad_y_modificar_respuesta(sender_id, respuesta)
         enviar_mensaje(sender_id, respuesta_final)
         
+
 # Función para enviar mensajes
 def enviar_mensaje(sender_id, mensaje):
     url = f"https://graph.facebook.com/v16.0/me/messages?access_token={ACCESS_TOKEN}"
