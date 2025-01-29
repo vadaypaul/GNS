@@ -73,17 +73,17 @@ def conectar_db():
         return None
 
 # Función para guardar un mensaje en la base de datos
-def guardar_mensaje(usuario_id, mensaje, es_respuesta):
+def guardar_mensaje(sender_id, mensaje, es_respuesta):
     conn = conectar_db()
     if not conn:
         return
     try:
         with conn.cursor() as cursor:
             query = """
-                INSERT INTO mensajes (usuario_id, mensaje, es_respuesta, timestamp)
+                INSERT INTO mensajes (sender_id, mensaje, es_respuesta, timestamp)
                 VALUES (%s, %s, %s, NOW());
             """
-            cursor.execute(query, (usuario_id, mensaje, es_respuesta))
+            cursor.execute(query, (sender_id, mensaje, es_respuesta))
             conn.commit()
     except Exception as e:
         logger.error(f"Error al guardar el mensaje en la base de datos: {e}")
@@ -91,7 +91,7 @@ def guardar_mensaje(usuario_id, mensaje, es_respuesta):
         conn.close()
 
 # Función para obtener el historial de un usuario
-def obtener_historial(usuario_id, limite=10):
+def obtener_historial(sender_id, limite=10):
     conn = conectar_db()
     if not conn:
         return []
@@ -100,11 +100,11 @@ def obtener_historial(usuario_id, limite=10):
             query = """
                 SELECT mensaje, es_respuesta
                 FROM mensajes
-                WHERE usuario_id = %s
+                WHERE sender_id = %s
                 ORDER BY timestamp DESC
                 LIMIT %s;
             """
-            cursor.execute(query, (usuario_id, limite))
+            cursor.execute(query, (sender_id, limite))
             resultados = cursor.fetchall()
             return resultados[::-1]  # Ordenar cronológicamente
     except Exception as e:
