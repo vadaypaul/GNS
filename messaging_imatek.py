@@ -32,60 +32,28 @@ def log_mensaje(sender_id, respuesta, error=None):
 
 def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_gpt):
     """
-    Verifica si han pasado más de 30 segundos desde el último mensaje del usuario.
-    Si es así, agrega el aviso de privacidad al inicio de la respuesta.
+    Agrega SIEMPRE el aviso de privacidad al inicio de la respuesta.
     """
     try:
         print(f"\n\n[DEBUG] Ejecutando verificar_inactividad_y_modificar_respuesta() para {sender_id}")
 
-        # Obtener historial de mensajes
+        # Obtener historial de mensajes (aunque no lo usemos para calcular inactividad)
         historial, fecha_penultimo_mensaje = obtener_historial(sender_id)
 
         print(f"[DEBUG] Historial crudo obtenido: {historial}")
         print(f"[DEBUG] Fecha del penúltimo mensaje (antes de conversión): {fecha_penultimo_mensaje}")
 
-        # Filtrar solo los mensajes enviados por el usuario
-        mensajes_usuario = [m for m in historial if m[1] is False]
+        # Respuesta final con aviso de privacidad SIEMPRE
+        respuesta_final = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_gpt}"
+        print(f"[DEBUG] Respuesta final con aviso: {respuesta_final}")
 
-        if not mensajes_usuario:
-            print("[DEBUG] No hay mensajes del usuario en el historial. Se enviará el aviso de privacidad.")
-            return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_gpt}"
-
-        # Obtener la fecha del último mensaje del usuario
-        fecha_penultimo_mensaje = mensajes_usuario[-1][2]
-
-        if not fecha_penultimo_mensaje:
-            print("[DEBUG] No se encontró un mensaje anterior válido del usuario.")
-            return respuesta_gpt  # Se usa respuesta_gpt en lugar de respuesta_final
-
-        # Convertir la fecha del penúltimo mensaje a objeto datetime
-        try:
-            fecha_penultimo_mensaje_dt = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
-            print(f"[DEBUG] Fecha del penúltimo mensaje (después de conversión): {fecha_penultimo_mensaje_dt}")
-        except ValueError as e:
-            print(f"[ERROR] Error al convertir la fecha del penúltimo mensaje: {e}")
-            return respuesta_gpt  # En caso de error, enviar la respuesta sin modificar
-
-        fecha_actual = datetime.now()
-        diferencia = (fecha_actual - fecha_penultimo_mensaje_dt).total_seconds()
-
-        print(f"[DEBUG] Fecha actual: {fecha_actual}")
-        print(f"[DEBUG] Diferencia en segundos desde el último mensaje: {diferencia}")
-
-        # Si han pasado más de 30 segundos, agregar el aviso de privacidad
-        if diferencia > 30:
-            print("[DEBUG] Han pasado más de 30 segundos. Se agregará el aviso de privacidad.")
-            return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_gpt}"
-        else:
-            print("[DEBUG] Han pasado menos de 30 segundos. No se agrega el aviso.")
-
-        return respuesta_gpt  # Se devuelve la respuesta final
+        return respuesta_final  # Retornar la respuesta modificada
 
     except Exception as e:
-        print(f"[ERROR] Error al verificar inactividad: {e}")
+        print(f"[ERROR] Error al modificar respuesta con aviso de privacidad: {e}")
         traceback.print_exc()
-        return respuesta_gpt  # Si ocurre un error, enviamos la respuesta sin modificar.
-            
+        return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_gpt}"  # Si hay error, igual se agrega
+
 def enviar_mensaje(sender_id, respuesta_final):
     """
     Envía un mensaje al usuario a través de la API de Facebook Messenger.
@@ -114,14 +82,8 @@ def enviar_mensaje(sender_id, respuesta_final):
         log_mensaje(sender_id, respuesta_final, error=error_msg)
 
 # ------------------------
-# 🚀 Cómo se debe ejecutar
+# 🚀 EJEMPLO DE USO
 # ------------------------
-# Obtienes la respuesta del GPT en respuesta_gpt
-# Luego la pasas por verificar_inactividad_y_modificar_respuesta()
-# La salida de esa función es respuesta_final
-# Finalmente, envías el mensaje con enviar_mensaje()
-
-# EJEMPLO DE USO:
 # sender_id = "123456789"
 # respuesta_gpt = "Hola, ¿en qué puedo ayudarte?"
 # respuesta_final = verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_gpt)
