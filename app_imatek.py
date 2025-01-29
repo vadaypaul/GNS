@@ -1,5 +1,5 @@
 # Compuesto por:
-# conectar
+# conectar_db
 # guardar_mensaje
 # obtener_historial
 # limpiar_eventos_expirados
@@ -23,6 +23,8 @@ from psycopg2 import sql
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from google.cloud import vision
+from messaging_imatek import verificar_inactividad_y_modificar_respuesta
+
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO)
@@ -291,11 +293,13 @@ def manejar_mensaje(event):
 
         # Guardar mensaje del usuario y respuesta del bot
         guardar_mensaje(sender_id, texto_mensaje, False)
-        guardar_mensaje(sender_id, respuesta, True)
-
+        guardar_mensaje(sender_id, respuesta, True)      
+        
         # Enviar respuesta al usuario
-        enviar_mensaje(sender_id, respuesta)
-
+        respuesta_gpt = procesar_mensaje(mensaje, sender_id)
+        respuesta_final = verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_gpt)
+        enviar_mensaje(sender_id, respuesta_final)
+        
 # Función para enviar mensajes
 def enviar_mensaje(sender_id, mensaje):
     url = f"https://graph.facebook.com/v16.0/me/messages?access_token={ACCESS_TOKEN}"
