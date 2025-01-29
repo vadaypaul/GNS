@@ -55,6 +55,9 @@ def enviar_mensaje(sender_id, respuesta_final):
     """
     print(f"\n\n[DEBUG] Ejecutando enviar_mensaje() para {sender_id}")
 
+    # Debug para verificar el contenido de la respuesta antes de enviar
+    print(f"[DEBUG] Contenido de respuesta_final antes de enviar: {respuesta_final}")
+
     url = f"https://graph.facebook.com/v16.0/me/messages?access_token={ACCESS_TOKEN}"
     headers = {'Content-Type': 'application/json'}
     payload = {
