@@ -42,7 +42,7 @@ def conectar_db():
         return None
 
 # Función para obtener el historial de mensajes
-def obtener_historial(usuario_id):
+def obtener_historial(sender_id):
     """
     Obtiene los últimos 10 mensajes del historial del usuario desde la base de datos
     y devuelve también la fecha del penúltimo mensaje si existe.
@@ -57,15 +57,15 @@ def obtener_historial(usuario_id):
             query = """
                 SELECT mensaje, to_char(timestamp, 'DD/MM/YYYY HH24:MI:SS') as fecha
                 FROM mensajes
-                WHERE usuario_id = %s AND es_respuesta = FALSE
+                WHERE sender_id = %s AND es_respuesta = FALSE
                 ORDER BY timestamp DESC
                 LIMIT 10
             """
-            cursor.execute(query, (usuario_id,))
+            cursor.execute(query, (sender_id,))
             historial = cursor.fetchall()
 
             if not historial:
-                logger.info(f"El historial para el usuario '{usuario_id}' está vacío.")
+                logger.info(f"El historial para el usuario '{sender_id}' está vacío.")
                 return [], None  # Si no hay historial, no hay penúltimo mensaje
 
             # Obtener la fecha del penúltimo mensaje si hay al menos dos mensajes
@@ -81,7 +81,7 @@ def obtener_historial(usuario_id):
         conexion.close()
 
 # Función para guardar un nuevo mensaje en la base de datos
-def guardar_mensaje(usuario_id, mensaje, nombre_usuario="Usuario", es_respuesta=False):
+def guardar_mensaje(sender_id, mensaje, nombre_usuario="Usuario", es_respuesta=False):
     """
     Guarda un nuevo mensaje en la base de datos.
     """
@@ -93,19 +93,19 @@ def guardar_mensaje(usuario_id, mensaje, nombre_usuario="Usuario", es_respuesta=
     try:
         with conexion.cursor() as cursor:
             query = """
-                INSERT INTO mensajes (usuario_id, mensaje, es_respuesta, timestamp)
+                INSERT INTO mensajes (sender_id, mensaje, es_respuesta, timestamp)
                 VALUES (%s, %s, %s, %s)
             """
-            cursor.execute(query, (usuario_id, mensaje, es_respuesta, datetime.now()))
+            cursor.execute(query, (sender_id, mensaje, es_respuesta, datetime.now()))
             conexion.commit()
-            logger.info(f"Mensaje guardado exitosamente para el usuario {usuario_id}.")
+            logger.info(f"Mensaje guardado exitosamente para el usuario {sender_id}.")
     except Exception as e:
         logger.error(f"Error al guardar mensaje: {e}")
     finally:
         conexion.close()
 
 # Función para limitar el historial del usuario
-def limitar_historial(usuario_id):
+def limitar_historial(sender_id):
     """
     Elimina los mensajes más antiguos para mantener el historial limitado a 10 entradas.
     """
@@ -121,21 +121,21 @@ def limitar_historial(usuario_id):
                 WHERE id IN (
                     SELECT id
                     FROM mensajes
-                    WHERE usuario_id = %s
+                    WHERE sender_id = %s
                     ORDER BY timestamp DESC
                     OFFSET 10
                 )
             """
-            cursor.execute(query, (usuario_id,))
+            cursor.execute(query, (sender_id,))
             conexion.commit()
-            logger.info(f"Historial del usuario {usuario_id} limitado exitosamente.")
+            logger.info(f"Historial del usuario {sender_id} limitado exitosamente.")
     except Exception as e:
         logger.error(f"Error al limitar historial: {e}")
     finally:
         conexion.close()
 
 # Función principal para procesar mensajes
-def procesar_mensaje(mensaje, usuario_id):
+def procesar_mensaje(mensaje, sender_id):
     """
     Procesa el mensaje del usuario y utiliza el historial para generar contexto.
     """
@@ -149,38 +149,38 @@ def procesar_mensaje(mensaje, usuario_id):
         ultimomensaje = mensaje.get("texto", "").strip()
         nombre_usuario = mensaje.get("nombre_usuario", "").strip()
 
-        # Validar que usuario_id sea un string o entero
-        if not isinstance(usuario_id, (str, int)):
-            raise TypeError("El parámetro 'usuario_id' debe ser un string o un entero.")
+        # Validar que sender_id sea un string o entero
+        if not isinstance(sender_id, (str, int)):
+            raise TypeError("El parámetro 'sender_id' debe ser un string o un entero.")
         if not ultimomensaje:
             raise ValueError("El texto del mensaje no puede estar vacío.")
         if not nombre_usuario:
-            logger.warning(f"Nombre de usuario no proporcionado para usuario_id {usuario_id}. Usando 'Usuario'.")
+            logger.warning(f"Nombre de usuario no proporcionado para sender_id {sender_id}. Usando 'Usuario'.")
             nombre_usuario = "Usuario"
 
-        logger.info(f"Procesando mensaje: '{ultimomensaje}' para usuario: {usuario_id} ({nombre_usuario})")
+        logger.info(f"Procesando mensaje: '{ultimomensaje}' para usuario: {sender_id} ({nombre_usuario})")
 
         # Guardar el mensaje del usuario en la base de datos
         try:
-            guardar_mensaje(usuario_id, ultimomensaje, nombre_usuario, es_respuesta=False)
-            logger.info(f"Mensaje guardado exitosamente en la base de datos para usuario: {usuario_id}.")
+            guardar_mensaje(sender_id, ultimomensaje, nombre_usuario, es_respuesta=False)
+            logger.info(f"Mensaje guardado exitosamente en la base de datos para usuario: {sender_id}.")
         except Exception as db_error:
             logger.error(f"Error al guardar el mensaje del usuario en la base de datos: {db_error}")
             return "Hubo un problema al guardar tu mensaje. Por favor, intenta nuevamente."
 
         # Limitar el historial del usuario
         try:
-            limitar_historial(usuario_id)
-            logger.info(f"Historial limitado exitosamente para usuario: {usuario_id}.")
+            limitar_historial(sender_id)
+            logger.info(f"Historial limitado exitosamente para usuario: {sender_id}.")
         except Exception as limit_error:
-            logger.warning(f"Error al limitar el historial para el usuario {usuario_id}: {limit_error}")
+            logger.warning(f"Error al limitar el historial para el usuario {sender_id}: {limit_error}")
 
         # Obtener el contexto actualizado correctamente
         try:
-            contexto, _ = obtener_historial(usuario_id)  # Capturamos solo el historial, ignoramos la fecha del penúltimo mensaje
-            logger.info(f"Historial obtenido exitosamente para usuario: {usuario_id}.")
+            contexto, _ = obtener_historial(sender_id)  # Capturamos solo el historial, ignoramos la fecha del penúltimo mensaje
+            logger.info(f"Historial obtenido exitosamente para usuario: {sender_id}.")
         except Exception as hist_error:
-            logger.error(f"Error al obtener el historial para el usuario {usuario_id}: {hist_error}")
+            logger.error(f"Error al obtener el historial para el usuario {sender_id}: {hist_error}")
             contexto = []
 
         # Construir el contexto dinámico con solo los mensajes recientes y sin duplicados
@@ -217,18 +217,18 @@ def procesar_mensaje(mensaje, usuario_id):
         try:
             respuesta_gpt = interpretar_mensaje(
                 ultimomensaje=ultimomensaje,
-                numero_usuario=str(usuario_id),
+                numero_usuario=str(sender_id),
                 nombre_usuario=nombre_usuario
             )
-            logger.info(f"Respuesta de GPT generada exitosamente para usuario: {usuario_id}.")
+            logger.info(f"Respuesta de GPT generada exitosamente para usuario: {sender_id}.")
         except Exception as gpt_error:
             logger.error(f"Error al interpretar el mensaje con GPT: {gpt_error}")
             return "El sistema tuvo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
 
         # Guardar la respuesta en la base de datos como respuesta del bot
         try:
-            guardar_mensaje(usuario_id, respuesta_gpt, "GPT", es_respuesta=True)
-            logger.info(f"Respuesta del bot guardada exitosamente para usuario: {usuario_id}.")
+            guardar_mensaje(sender_id, respuesta_gpt, "GPT", es_respuesta=True)
+            logger.info(f"Respuesta del bot guardada exitosamente para usuario: {sender_id}.")
         except Exception as db_resp_error:
             logger.error(f"Error al guardar la respuesta del bot en la base de datos: {db_resp_error}")
 
@@ -238,11 +238,11 @@ def procesar_mensaje(mensaje, usuario_id):
                 mensaje=ultimomensaje,
                 respuesta=respuesta_gpt,
                 contexto=contexto,
-                usuario_id=usuario_id
+                sender_id=sender_id
             )
-            logger.info(f"Reporte generado exitosamente para usuario: {usuario_id}.")
+            logger.info(f"Reporte generado exitosamente para usuario: {sender_id}.")
         except Exception as report_error:
-            logger.warning(f"Error al generar el reporte para el usuario {usuario_id}: {report_error}")
+            logger.warning(f"Error al generar el reporte para el usuario {sender_id}: {report_error}")
 
         return respuesta_gpt
 
