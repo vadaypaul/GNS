@@ -17,7 +17,7 @@ logging.basicConfig(
     ]
 )
 
-def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, origen_respuesta=None, usuario_id=None, contexto=None):
+def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, origen_respuesta=None, sender_id=None, contexto=None):
     """
     Genera un reporte extremadamente detallado para diagnosticar errores y procesos exitosos.
     Los logs se priorizan para Render, garantizando información relevante.
@@ -38,8 +38,8 @@ def generar_reporte(mensaje, respuesta=None, error=None, archivo_json=None, orig
 
         # Información del usuario
         logging.info("\n=== Información del Usuario ===")
-        if usuario_id:
-            logging.info(f"ID del usuario: {usuario_id}")
+        if sender_id:
+            logging.info(f"ID del usuario: {sender_id}")
         else:
             logging.info("ID del usuario: No disponible")
 
