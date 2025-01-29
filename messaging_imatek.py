@@ -30,7 +30,7 @@ def log_mensaje(sender_id, respuesta, error=None):
             log_file.write(f"Error: {error}\n")
         log_file.write("-" * 50 + "\n")
 
-def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_final):
+def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_gpt):
     """
     Verifica si han pasado más de 30 segundos desde el último mensaje del usuario.
     Si es así, agrega el aviso de privacidad al inicio de la respuesta.
@@ -49,14 +49,14 @@ def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_final):
 
         if not mensajes_usuario:
             print("[DEBUG] No hay mensajes del usuario en el historial. Se enviará el aviso de privacidad.")
-            return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_final}"
+            return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_gpt}"
 
         # Obtener la fecha del último mensaje del usuario
         fecha_penultimo_mensaje = mensajes_usuario[-1][2]
 
         if not fecha_penultimo_mensaje:
             print("[DEBUG] No se encontró un mensaje anterior válido del usuario.")
-            return respuesta_final
+            return respuesta_gpt  # Se usa respuesta_gpt en lugar de respuesta_final
 
         # Convertir la fecha del penúltimo mensaje a objeto datetime
         try:
@@ -64,7 +64,7 @@ def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_final):
             print(f"[DEBUG] Fecha del penúltimo mensaje (después de conversión): {fecha_penultimo_mensaje_dt}")
         except ValueError as e:
             print(f"[ERROR] Error al convertir la fecha del penúltimo mensaje: {e}")
-            return respuesta_final  # En caso de error, enviar la respuesta sin modificar
+            return respuesta_gpt  # En caso de error, enviar la respuesta sin modificar
 
         fecha_actual = datetime.now()
         diferencia = (fecha_actual - fecha_penultimo_mensaje_dt).total_seconds()
@@ -75,16 +75,16 @@ def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_final):
         # Si han pasado más de 30 segundos, agregar el aviso de privacidad
         if diferencia > 30:
             print("[DEBUG] Han pasado más de 30 segundos. Se agregará el aviso de privacidad.")
-            return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_final}"
+            return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_gpt}"
         else:
             print("[DEBUG] Han pasado menos de 30 segundos. No se agrega el aviso.")
 
-        return respuesta_final
+        return respuesta_gpt  # Se devuelve la respuesta final
 
     except Exception as e:
         print(f"[ERROR] Error al verificar inactividad: {e}")
         traceback.print_exc()
-        return respuesta_final  # Si ocurre un error, enviamos la respuesta sin modificar.
+        return respuesta_gpt  # Si ocurre un error, enviamos la respuesta sin modificar.
             
 def enviar_mensaje(sender_id, respuesta_final):
     """
@@ -112,3 +112,17 @@ def enviar_mensaje(sender_id, respuesta_final):
         error_msg = f"[ERROR] Error al enviar el mensaje: {str(e)}"
         print(error_msg)
         log_mensaje(sender_id, respuesta_final, error=error_msg)
+
+# ------------------------
+# 🚀 Cómo se debe ejecutar
+# ------------------------
+# Obtienes la respuesta del GPT en respuesta_gpt
+# Luego la pasas por verificar_inactividad_y_modificar_respuesta()
+# La salida de esa función es respuesta_final
+# Finalmente, envías el mensaje con enviar_mensaje()
+
+# EJEMPLO DE USO:
+# sender_id = "123456789"
+# respuesta_gpt = "Hola, ¿en qué puedo ayudarte?"
+# respuesta_final = verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_gpt)
+# enviar_mensaje(sender_id, respuesta_final)
