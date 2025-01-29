@@ -58,18 +58,17 @@ def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta):
 def enviar_mensaje(sender_id, respuesta_final):
     """
     Envía un mensaje al usuario a través de la API de Facebook Messenger.
-    Incluye validaciones y manejo de errores mejorado.
     """
-    print(f"\n\n[DEBUG] → Ejecutando enviar_mensaje() para {sender_id}")
+    print(f"\n\n[DEBUG] Ejecutando enviar_mensaje() para {sender_id}")
+    
+    # Debug para verificar el contenido de la respuesta antes de enviar
+    print(f"[DEBUG] Contenido de respuesta_final antes de enviar: {respuesta_final}")
 
-    # Validar que la respuesta no sea None ni vacía antes de enviarla
-    if not isinstance(respuesta_final, str) or not respuesta_final.strip():
-        print(f"[WARNING] → Respuesta vacía o inválida para {sender_id}. Se usará mensaje por defecto.")
+    # Verificar que la respuesta no sea None o vacía
+    if not respuesta_final or not isinstance(respuesta_final, str):
+        print(f"[WARNING] Respuesta vacía o no válida para {sender_id}. Usando mensaje por defecto.")
         respuesta_final = "Lo siento, hubo un error al procesar tu solicitud."
 
-    print(f"[DEBUG] → Contenido de respuesta_final antes de enviar:\n---\n{respuesta_final}\n---")
-
-    # Configuración del endpoint de Facebook Messenger
     url = f"https://graph.facebook.com/v16.0/me/messages?access_token={ACCESS_TOKEN}"
     headers = {'Content-Type': 'application/json'}
     payload = {
@@ -80,32 +79,15 @@ def enviar_mensaje(sender_id, respuesta_final):
     try:
         # Enviar solicitud a la API de Messenger
         response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()  # Lanza un error si la solicitud no fue exitosa
+        response.raise_for_status()  # Verifica si la solicitud fue exitosa
 
         # Registro de éxito
-        print(f"[SUCCESS] → Mensaje enviado correctamente a {sender_id} ✅")
-        print(f"[DEBUG] → Mensaje enviado:\n---\n{respuesta_final}\n---")
+        print(f"[DEBUG] Mensaje enviado a {sender_id}: {respuesta_final}")
         log_mensaje(sender_id, respuesta_final)
-
-    except requests.exceptions.HTTPError as http_err:
-        error_msg = f"[HTTP ERROR] → Error HTTP al enviar el mensaje a {sender_id}: {http_err.response.status_code} - {http_err.response.text}"
+    except requests.exceptions.RequestException as e:
+        # Manejo y registro de errores
+        error_msg = f"[ERROR] Error al enviar el mensaje: {str(e)}"
         print(error_msg)
-        log_mensaje(sender_id, respuesta_final, error=error_msg)
-
-    except requests.exceptions.ConnectionError:
-        error_msg = f"[CONNECTION ERROR] → Fallo en la conexión al enviar el mensaje a {sender_id}."
-        print(error_msg)
-        log_mensaje(sender_id, respuesta_final, error=error_msg)
-
-    except requests.exceptions.Timeout:
-        error_msg = f"[TIMEOUT ERROR] → Tiempo de espera agotado al enviar el mensaje a {sender_id}."
-        print(error_msg)
-        log_mensaje(sender_id, respuesta_final, error=error_msg)
-
-    except requests.exceptions.RequestException as req_err:
-        error_msg = f"[REQUEST ERROR] → Error desconocido al enviar el mensaje a {sender_id}: {str(req_err)}"
-        print(error_msg)
-        traceback.print_exc()
         log_mensaje(sender_id, respuesta_final, error=error_msg)
         
 # ------------------------
