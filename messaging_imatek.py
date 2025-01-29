@@ -30,21 +30,15 @@ def log_mensaje(sender_id, respuesta, error=None):
             log_file.write(f"Error: {error}\n")
         log_file.write("-" * 50 + "\n")
 
-def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_gpt):
+def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta):
     """
     Agrega SIEMPRE el aviso de privacidad al inicio de la respuesta.
     """
     try:
         print(f"\n\n[DEBUG] Ejecutando verificar_inactividad_y_modificar_respuesta() para {sender_id}")
 
-        # Obtener historial de mensajes (aunque no lo usemos para calcular inactividad)
-        historial, fecha_penultimo_mensaje = obtener_historial(sender_id)
-
-        print(f"[DEBUG] Historial crudo obtenido: {historial}")
-        print(f"[DEBUG] Fecha del penúltimo mensaje (antes de conversión): {fecha_penultimo_mensaje}")
-
         # Respuesta final con aviso de privacidad SIEMPRE
-        respuesta_final = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_gpt}"
+        respuesta_final = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta}"
         print(f"[DEBUG] Respuesta final con aviso: {respuesta_final}")
 
         return respuesta_final  # Retornar la respuesta modificada
@@ -52,7 +46,7 @@ def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta_gpt):
     except Exception as e:
         print(f"[ERROR] Error al modificar respuesta con aviso de privacidad: {e}")
         traceback.print_exc()
-        return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta_gpt}"  # Si hay error, igual se agrega
+        return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta}"  # Si hay error, igual se agrega
 
 def enviar_mensaje(sender_id, respuesta_final):
     """
