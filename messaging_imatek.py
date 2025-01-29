@@ -32,22 +32,23 @@ def log_mensaje(sender_id, respuesta, error=None):
 
 def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta):
     """
-    Agrega SIEMPRE el aviso de privacidad al inicio de la respuesta.
+    Agrega SIEMPRE el Clinica Imatek al inicio de la respuesta.
     """
     try:
         print(f"\n\n[DEBUG] Ejecutando verificar_inactividad_y_modificar_respuesta() para {sender_id}")
+        print(f"[DEBUG] Respuesta original antes de modificar: {respuesta}")
 
-        # Respuesta final con aviso de privacidad SIEMPRE
-        respuesta_final = f"Aviso de Privacidad.\n\n{respuesta}"
-        print(f"[DEBUG] Respuesta final con aviso: {respuesta_final}")
+        # Respuesta final con Clinica Imatek SIEMPRE
+        respuesta_final = f"Clinica Imatek.\n\n{respuesta}"
+        print(f"[DEBUG] Respuesta final con Clinica Imatek: {respuesta_final}")
 
         return respuesta_final  # Retornar la respuesta modificada
 
     except Exception as e:
-        print(f"[ERROR] Error al modificar respuesta con aviso de privacidad: {e}")
+        print(f"[ERROR] Error al modificar respuesta con Clinica Imatek: {e}")
         traceback.print_exc()
-        return f"Aviso de Privacidad.\n\n{respuesta}"  # Si hay error, igual se agrega
-
+        return f"Clinica Imatek.\n\n{respuesta}"  # Si hay error, igual se agrega
+    
 def enviar_mensaje(sender_id, respuesta_final):
     """
     Envía un mensaje al usuario a través de la API de Facebook Messenger.
