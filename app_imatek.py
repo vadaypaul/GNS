@@ -284,21 +284,27 @@ def manejar_mensaje(event):
     if 'text' in event['message']:
         texto_mensaje = event['message']['text']
 
+        print(f"\n\n[DEBUG] → Mensaje recibido de {sender_id}: '{texto_mensaje}'")
+
         # Obtener historial del usuario
         historial = obtener_historial(sender_id)
+        print(f"[DEBUG] → Historial recuperado: {historial}")
 
         # Procesar mensaje
         mensaje = {"texto": texto_mensaje, "nombre_usuario": nombre_usuario}
         respuesta = procesar_mensaje(mensaje, sender_id)
+        print(f"[DEBUG] → Respuesta de GPT antes de modificar: '{respuesta}'")
 
         # Guardar mensaje del usuario y respuesta del bot
         guardar_mensaje(sender_id, texto_mensaje, False)
-        guardar_mensaje(sender_id, respuesta, True)      
-        
+        guardar_mensaje(sender_id, respuesta, True)
 
         # Enviar respuesta al usuario
         respuesta_final = verificar_inactividad_y_modificar_respuesta(sender_id, respuesta)
+        print(f"[DEBUG] → Respuesta final después de modificar: '{respuesta_final}'")
+
         enviar_mensaje(sender_id, respuesta_final)
+        print(f"[DEBUG] → Mensaje enviado exitosamente a {sender_id}.\n")
         
 
 # Función para enviar mensajes
