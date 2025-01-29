@@ -38,7 +38,7 @@ def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta):
         print(f"\n\n[DEBUG] Ejecutando verificar_inactividad_y_modificar_respuesta() para {sender_id}")
 
         # Respuesta final con aviso de privacidad SIEMPRE
-        respuesta_final = f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta}"
+        respuesta_final = f"Aviso de Privacidad.\n\n{respuesta}"
         print(f"[DEBUG] Respuesta final con aviso: {respuesta_final}")
 
         return respuesta_final  # Retornar la respuesta modificada
@@ -46,7 +46,7 @@ def verificar_inactividad_y_modificar_respuesta(sender_id, respuesta):
     except Exception as e:
         print(f"[ERROR] Error al modificar respuesta con aviso de privacidad: {e}")
         traceback.print_exc()
-        return f"Aviso de Privacidad: http://bit.ly/3PPhnmm\n\n{respuesta}"  # Si hay error, igual se agrega
+        return f"Aviso de Privacidad.\n\n{respuesta}"  # Si hay error, igual se agrega
 
 def enviar_mensaje(sender_id, respuesta_final):
     """
