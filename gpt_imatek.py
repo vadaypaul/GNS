@@ -81,7 +81,7 @@ def interpretar_mensaje(
                 cursor.execute("""
                     SELECT mensaje, es_respuesta, to_char(timestamp, 'DD/MM/YYYY HH24:MI:SS') as fecha
                     FROM mensajes
-                    WHERE usuario_id = %s
+                    WHERE sender_id = %s
                     ORDER BY timestamp DESC
                     LIMIT 10;
                 """, (str(numero_usuario),))
@@ -142,7 +142,7 @@ def interpretar_mensaje(
                 # Guardar el último mensaje del usuario y la respuesta del bot
                 try:
                     cursor.execute("""
-                        INSERT INTO mensajes (usuario_id, mensaje, es_respuesta, timestamp)
+                        INSERT INTO mensajes (sender_id, mensaje, es_respuesta, timestamp)
                         VALUES (%s, %s, %s, NOW()), (%s, %s, %s, NOW());
                     """, (
                         str(numero_usuario), ultimomensaje, False,
