@@ -276,7 +276,6 @@ def validar_firma(signature, payload):
         return False
     return True
 
-# Función para manejar mensajes
 def manejar_mensaje(event):
     sender_id = event['sender']['id']
     nombre_usuario = obtener_nombre_usuario(sender_id)
@@ -284,27 +283,28 @@ def manejar_mensaje(event):
     if 'text' in event['message']:
         texto_mensaje = event['message']['text']
 
-        print(f"\n\n[DEBUG] → Mensaje recibido de {sender_id}: '{texto_mensaje}'")
-
         # Obtener historial del usuario
         historial = obtener_historial(sender_id)
-        print(f"[DEBUG] → Historial recuperado: {historial}")
 
         # Procesar mensaje
         mensaje = {"texto": texto_mensaje, "nombre_usuario": nombre_usuario}
         respuesta = procesar_mensaje(mensaje, sender_id)
-        print(f"[DEBUG] → Respuesta de GPT antes de modificar: '{respuesta}'")
+
+        # Debugging para verificar respuesta antes de modificar
+        print(f"[DEBUG] Respuesta procesada antes de modificación: {respuesta}")
+
+        # Aplicar la función verificar_inactividad_y_modificar_respuesta correctamente
+        respuesta_final = verificar_inactividad_y_modificar_respuesta(sender_id, respuesta)
+
+        # Debugging para asegurarnos de que la respuesta está siendo modificada
+        print(f"[DEBUG] Respuesta final después de modificar: {respuesta_final}")
 
         # Guardar mensaje del usuario y respuesta del bot
         guardar_mensaje(sender_id, texto_mensaje, False)
-        guardar_mensaje(sender_id, respuesta, True)
+        guardar_mensaje(sender_id, respuesta_final, True)
 
         # Enviar respuesta al usuario
-        respuesta_final = verificar_inactividad_y_modificar_respuesta(sender_id, respuesta)
-        print(f"[DEBUG] → Respuesta final después de modificar: '{respuesta_final}'")
-
         enviar_mensaje(sender_id, respuesta_final)
-        print(f"[DEBUG] → Mensaje enviado exitosamente a {sender_id}.\n")
         
 
 # Función para enviar mensajes
