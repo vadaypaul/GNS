@@ -14,6 +14,7 @@ from gpt_imatek import PROMPT_BASE
 from datetime import datetime
 import logging
 import traceback
+from gpt_imatek import verificar_inactividad
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO)
@@ -200,6 +201,7 @@ def procesar_mensaje(mensaje, sender_id):
         # Convertir a string el contexto
         contexto_dinamico = "\n".join(contexto_filtrado) if contexto_filtrado else "Sin historial previo."
 
+        avisodeprivacidad = verificar_inactividad(sender_id)
 
         # Crear el prompt dinámico
         try:
@@ -207,7 +209,8 @@ def procesar_mensaje(mensaje, sender_id):
                 contexto=contexto_dinamico,
                 ultimomensaje=ultimomensaje,
                 fechayhoraprompt=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                tipo="texto"
+                tipo="texto",
+                avisodeprivacidad=avisodeprivacidad
             )
         except KeyError as ke:
             logger.error(f"Error en PROMPT_BASE: Falta la clave {ke}.")
@@ -217,7 +220,7 @@ def procesar_mensaje(mensaje, sender_id):
         try:
             respuesta_gpt = interpretar_mensaje(
                 ultimomensaje=ultimomensaje,
-                numero_usuario=str(sender_id),
+                sender_id=str(sender_id),
                 nombre_usuario=nombre_usuario
             )
             logger.info(f"Respuesta de GPT generada exitosamente para usuario: {sender_id}.")
