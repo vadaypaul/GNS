@@ -15,7 +15,7 @@ from datetime import datetime
 from threading import Thread
 import time
 import traceback
-from logic_imatek import obtener_historial
+from logic_imatek import verificar_inactividad
 
 # Configuración del logger
 logger = logging.getLogger("GPT_Imatek")
@@ -162,59 +162,6 @@ def interpretar_mensaje(
     except Exception as e:
         logger.error(f"Error inesperado en interpretar_mensaje: {e}")
         return f"Hubo un error procesando tu mensaje. Por favor, intenta nuevamente."
-
-def verificar_inactividad(usuario_id):
-    """
-    Verifica si han pasado más de 30 segundos entre el último y penúltimo mensaje del usuario.
-    Si es así, modifica el texto dinámico {avisodeprivacidad} para incluir el aviso de privacidad.
-    """
-    try:
-        print(f"\n[DEBUG] → Ejecutando verificar_inactividad() para usuario: {usuario_id}")
-
-        # Obtener historial y fecha del penúltimo mensaje
-        historial, fecha_penultimo_mensaje = obtener_historial(usuario_id)
-
-        print(f"[DEBUG] → Historial obtenido: {historial}")
-        print(f"[DEBUG] → Fecha del penúltimo mensaje: {fecha_penultimo_mensaje}")
-
-        # Definir la variable dinámica {avisodeprivacidad}
-        avisodeprivacidad = ""  # Por defecto, vacío
-
-        # Si no hay historial, es la primera interacción → Agregar aviso
-        if not historial:
-            print("[DEBUG] → No hay historial. Se asigna aviso de privacidad.")
-            avisodeprivacidad = "Aviso de Privacidad: http://bit.ly/3PPhnmm."
-
-        # Si no hay penúltimo mensaje, es el primer mensaje del usuario en la sesión
-        elif not fecha_penultimo_mensaje:
-            print("[DEBUG] → No hay penúltimo mensaje. Se asigna aviso de privacidad.")
-            avisodeprivacidad = "Aviso de Privacidad: http://bit.ly/3PPhnmm."
-
-        else:
-            # Convertir la fecha del penúltimo mensaje a datetime
-            fecha_penultimo_mensaje = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
-            fecha_actual = datetime.now()
-
-            # Calcular la diferencia de tiempo en segundos
-            diferencia = (fecha_actual - fecha_penultimo_mensaje).total_seconds()
-
-            print(f"[DEBUG] → Diferencia de tiempo: {diferencia} segundos")
-
-            if diferencia > 30:
-                print("[DEBUG] → Más de 30 segundos de inactividad. Se asigna aviso de privacidad.")
-                avisodeprivacidad = "Aviso de Privacidad: http://bit.ly/3PPhnmm."
-            else:
-                print("[DEBUG] → Menos de 30 segundos de inactividad. No se asigna aviso.")
-
-        # Log final para verificar el valor de {avisodeprivacidad}
-        print(f"[DEBUG] → Valor final de {avisodeprivacidad=}")
-
-        return avisodeprivacidad
-
-    except Exception as e:
-        print(f"[ERROR] → Error en verificar_inactividad para {usuario_id}: {e}")
-        traceback.print_exc()
-        return ""  # En caso de error, el aviso se mantiene vacío
     
 # Función para mantener conexión activa con OpenAI
 def mantener_conexion_activa():
