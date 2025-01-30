@@ -95,27 +95,31 @@ def interpretar_mensaje(
                     for h in reversed(historial)
                 ) if historial else "Sin historial previo."
 
+                # Determinar aviso de privacidad (directamente dentro de interpretar_mensaje)
+                avisodeprivacidad = ""
+                if not historial:
+                    avisodeprivacidad = "Aviso de Privacidad: http://bit.ly/3PPhnmm."
+                else:
+                    fecha_penultimo_mensaje = historial[1]['fecha'] if len(historial) > 1 else None
+                    if fecha_penultimo_mensaje:
+                        fecha_penultimo_mensaje = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
+                        diferencia = (datetime.now() - fecha_penultimo_mensaje).total_seconds()
+                        if diferencia > 30:
+                            avisodeprivacidad = "Aviso de Privacidad: http://bit.ly/3PPhnmm."
+
                 # Logs para debug
                 logger.debug(f"Historial recuperado: {historial}")
                 logger.debug(f"Contexto generado: {contexto}")
-
-                def obtener_aviso_de_privacidad(sender_id):
-                    """
-                    Función para obtener el aviso de privacidad basado en la inactividad.
-                    """
-                    from logic_imatek import verificar_inactividad  # Import dentro de la función para evitar ciclos
-
-                    return verificar_inactividad(sender_id)
+                logger.debug(f"Aviso de privacidad determinado: {avisodeprivacidad}")
 
                 # Sanitizar otros valores
                 contexto = sanitizar_texto(contexto) or "Sin contexto previo."
                 ultimomensaje = sanitizar_texto(ultimomensaje) or "Último mensaje no proporcionado."
                 fechayhoraprompt = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 tipo = sanitizar_texto(tipo) or "Tipo no especificado."
-                avisodeprivacidad = obtener_aviso_de_privacidad(sender_id)
 
                 # Logs para variables dinámicas
-                logger.debug(f"Variables dinámicas: ultimomensaje={ultimomensaje}, contexto={contexto}, fechayhoraprompt={fechayhoraprompt}, tipo={tipo}")
+                logger.debug(f"Variables dinámicas: ultimomensaje={ultimomensaje}, contexto={contexto}, fechayhoraprompt={fechayhoraprompt}, tipo={tipo}, avisodeprivacidad={avisodeprivacidad}")
 
                 # Generar el prompt
                 try:
