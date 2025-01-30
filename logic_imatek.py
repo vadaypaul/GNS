@@ -207,7 +207,7 @@ def procesar_mensaje(mensaje, sender_id):
         )
 
         # Extraer el aviso de privacidad de la respuesta si interpretar_mensaje lo devuelve
-        avisodeprivacidad = respuesta_gpt.get("avisodeprivacidad", "")
+        avisodeprivacidad = ""
 
         # Crear el prompt dinámico
         try:
