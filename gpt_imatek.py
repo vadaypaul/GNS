@@ -104,7 +104,7 @@ def interpretar_mensaje(
                     if fecha_penultimo_mensaje:
                         fecha_penultimo_mensaje = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
                         diferencia = (datetime.now() - fecha_penultimo_mensaje).total_seconds()
-                        if diferencia > 86400:
+                        if diferencia > 30:
                             avisodeprivacidad = "Aviso de Privacidad: http://bit.ly/3PPhnmm."
 
                 # Logs para debug
