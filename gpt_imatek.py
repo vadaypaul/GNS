@@ -15,7 +15,6 @@ from datetime import datetime
 from threading import Thread
 import time
 import traceback
-from logic_imatek import verificar_inactividad
 
 # Configuración del logger
 logger = logging.getLogger("GPT_Imatek")
@@ -100,12 +99,20 @@ def interpretar_mensaje(
                 logger.debug(f"Historial recuperado: {historial}")
                 logger.debug(f"Contexto generado: {contexto}")
 
+                def obtener_aviso_de_privacidad(sender_id):
+                    """
+                    Función para obtener el aviso de privacidad basado en la inactividad.
+                    """
+                    from logic_imatek import verificar_inactividad  # Import dentro de la función para evitar ciclos
+
+                    return verificar_inactividad(sender_id)
+
                 # Sanitizar otros valores
                 contexto = sanitizar_texto(contexto) or "Sin contexto previo."
                 ultimomensaje = sanitizar_texto(ultimomensaje) or "Último mensaje no proporcionado."
                 fechayhoraprompt = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 tipo = sanitizar_texto(tipo) or "Tipo no especificado."
-                avisodeprivacidad = verificar_inactividad(sender_id)
+                avisodeprivacidad = obtener_aviso_de_privacidad(sender_id)
 
                 # Logs para variables dinámicas
                 logger.debug(f"Variables dinámicas: ultimomensaje={ultimomensaje}, contexto={contexto}, fechayhoraprompt={fechayhoraprompt}, tipo={tipo}")
