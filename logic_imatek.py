@@ -14,7 +14,6 @@ from gpt_imatek import PROMPT_BASE
 from datetime import datetime
 import logging
 import traceback
-from gpt_imatek import verificar_inactividad
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO)
@@ -135,59 +134,6 @@ def limitar_historial(sender_id):
     finally:
         conexion.close()
 
-def verificar_inactividad(usuario_id):
-    """
-    Verifica si han pasado más de 30 segundos entre el último y penúltimo mensaje del usuario.
-    Si es así, modifica el texto dinámico {avisodeprivacidad} para incluir el aviso de privacidad.
-    """
-    try:
-        print(f"\n[DEBUG] → Ejecutando verificar_inactividad() para usuario: {usuario_id}")
-
-        # Obtener historial y fecha del penúltimo mensaje
-        historial, fecha_penultimo_mensaje = obtener_historial(usuario_id)
-
-        print(f"[DEBUG] → Historial obtenido: {historial}")
-        print(f"[DEBUG] → Fecha del penúltimo mensaje: {fecha_penultimo_mensaje}")
-
-        # Definir la variable dinámica {avisodeprivacidad}
-        avisodeprivacidad = ""  # Por defecto, vacío
-
-        # Si no hay historial, es la primera interacción → Agregar aviso
-        if not historial:
-            print("[DEBUG] → No hay historial. Se asigna aviso de privacidad.")
-            avisodeprivacidad = "Aviso de Privacidad: http://bit.ly/3PPhnmm."
-
-        # Si no hay penúltimo mensaje, es el primer mensaje del usuario en la sesión
-        elif not fecha_penultimo_mensaje:
-            print("[DEBUG] → No hay penúltimo mensaje. Se asigna aviso de privacidad.")
-            avisodeprivacidad = "Aviso de Privacidad: http://bit.ly/3PPhnmm."
-
-        else:
-            # Convertir la fecha del penúltimo mensaje a datetime
-            fecha_penultimo_mensaje = datetime.strptime(fecha_penultimo_mensaje, '%d/%m/%Y %H:%M:%S')
-            fecha_actual = datetime.now()
-
-            # Calcular la diferencia de tiempo en segundos
-            diferencia = (fecha_actual - fecha_penultimo_mensaje).total_seconds()
-
-            print(f"[DEBUG] → Diferencia de tiempo: {diferencia} segundos")
-
-            if diferencia > 30:
-                print("[DEBUG] → Más de 30 segundos de inactividad. Se asigna aviso de privacidad.")
-                avisodeprivacidad = "Aviso de Privacidad: http://bit.ly/3PPhnmm."
-            else:
-                print("[DEBUG] → Menos de 30 segundos de inactividad. No se asigna aviso.")
-
-        # Log final para verificar el valor de {avisodeprivacidad}
-        print(f"[DEBUG] → Valor final de {avisodeprivacidad=}")
-
-        return avisodeprivacidad
-
-    except Exception as e:
-        print(f"[ERROR] → Error en verificar_inactividad para {usuario_id}: {e}")
-        traceback.print_exc()
-        return ""  # En caso de error, el aviso se mantiene vacío
-
 # Función principal para procesar mensajes
 def procesar_mensaje(mensaje, sender_id):
     """
@@ -254,7 +200,14 @@ def procesar_mensaje(mensaje, sender_id):
         # Convertir a string el contexto
         contexto_dinamico = "\n".join(contexto_filtrado) if contexto_filtrado else "Sin historial previo."
 
-        avisodeprivacidad = verificar_inactividad(sender_id)
+        respuesta_gpt = interpretar_mensaje(
+            ultimomensaje=ultimomensaje,
+            sender_id=str(sender_id),
+            nombre_usuario=nombre_usuario
+        )
+
+        # Extraer el aviso de privacidad de la respuesta si interpretar_mensaje lo devuelve
+        avisodeprivacidad = respuesta_gpt.get("avisodeprivacidad", "")
 
         # Crear el prompt dinámico
         try:
