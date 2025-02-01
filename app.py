@@ -60,32 +60,34 @@ limiter = Limiter(
 def home():
     return "Chatbot funcionando correctamente."
 
-# API Key válida de GoHighLevel
+# API Key válida de GoHighLevel (Pega aquí tu API Key real)
 VALID_API_KEYS = ["pit-0184be10-1fd0-43f6-9fd5-170677bcd6ad"]
 
 @app.route('/oauth/callback', methods=['POST'])
 def authenticate():
     try:
-        # Intenta obtener los datos del request
-        data = request.json if request.is_json else {}  # Evita errores si el JSON no es válido
-        api_key = data.get("api_key", "").strip()  # Obtener desde JSON y eliminar espacios
-        header_api_key = request.headers.get("Authorization", "").replace("Bearer ", "").strip()  # Obtener desde Headers
+        # Capturar los datos del request
+        data = request.json if request.is_json else {}  
+        api_key = data.get("api_key", "").strip()  # Intentar obtener desde JSON
+        header_api_key = request.headers.get("Authorization", "").replace("Bearer ", "").strip()  # Desde Headers
+        alt_api_key = data.get("Authorization", "").strip()  # Si GHL lo manda en otro campo
 
         # 📌 Debug: Imprimir lo que recibe el servidor en Render
         print("🔹 Datos JSON recibidos:", data)
         print("🔹 API Key en JSON:", api_key)
         print("🔹 API Key en Headers:", header_api_key)
+        print("🔹 API Key en otro campo:", alt_api_key)
 
-        # Validar si la API Key es correcta
-        if api_key in VALID_API_KEYS or header_api_key in VALID_API_KEYS:
-            print("✅ Autenticación exitosa con API Key:", api_key or header_api_key)
+        # Validar API Key en todas las fuentes posibles
+        if api_key in VALID_API_KEYS or header_api_key in VALID_API_KEYS or alt_api_key in VALID_API_KEYS:
+            print("✅ Autenticación exitosa con API Key:", api_key or header_api_key or alt_api_key)
             return jsonify({"status": "verified"}), 200
         else:
-            print("❌ API Key inválida recibida:", api_key or header_api_key)
+            print("❌ API Key inválida recibida:", api_key or header_api_key or alt_api_key)
             return jsonify({"error": "Invalid API Key"}), 401
 
     except Exception as e:
-        print("⚠️ Error en la autenticación:", str(e))  # Manejo de errores inesperados
+        print("⚠️ Error en la autenticación:", str(e))  
         return jsonify({"error": "Internal Server Error"}), 500
 
 if __name__ == '__main__':
