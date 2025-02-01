@@ -66,14 +66,19 @@ VALID_API_KEYS = ["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6ImpZ
 @app.route('/oauth/callback', methods=['POST'])
 def authenticate():
     try:
-        # Capturar los datos del request
+        # Capturar TODO el request
         data = request.json if request.is_json else {}  
+        headers = dict(request.headers)  # Convertir headers a diccionario
+        raw_data = request.data.decode("utf-8")  # Capturar el cuerpo en texto
+
         api_key = data.get("api_key", "").strip()  # Intentar obtener desde JSON
         header_api_key = request.headers.get("Authorization", "").replace("Bearer ", "").strip()  # Desde Headers
         alt_api_key = data.get("Authorization", "").strip()  # Si GHL lo manda en otro campo
 
-        # 📌 Debug: Imprimir lo que recibe el servidor en Render
+        # 📌 Debug: Imprimir TODO lo que recibe el servidor
         print("🔹 Datos JSON recibidos:", data)
+        print("🔹 Headers recibidos:", headers)
+        print("🔹 Cuerpo crudo recibido:", raw_data)
         print("🔹 API Key en JSON:", api_key)
         print("🔹 API Key en Headers:", header_api_key)
         print("🔹 API Key en otro campo:", alt_api_key)
