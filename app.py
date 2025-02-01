@@ -61,7 +61,7 @@ def home():
     return "Chatbot funcionando correctamente."
 
 # API Key válida de GoHighLevel
-VALID_API_KEYS = ["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6ImpZRVplMEhFQWFwU0pST2JzT0xBIiwidmVyc2lvbiI6MSwiaWF0IjoxNzM4NDM5ODcyNDI5LCJzdWIiOiJvVFB4eUZVWkhhNkV3a0JpY0dwayJ9.vA0HXrmv7hM0wF6wOTauT36fNNdaLwdLqefb0qO5CUI"]
+VALID_API_KEYS = ["pit-0184be10-1fd0-43f6-9fd5-170677bcd6ad"]
 
 @app.route('/oauth/callback', methods=['POST'])
 def authenticate():
