@@ -58,18 +58,20 @@ limiter = Limiter(
 
 @app.route("/")
 def home():
-    return "Chatbot Clínica Imatek funcionando correctamente."
+    return "Chatbot funcionando correctamente."
 
-app = Flask(__name__)
+# API Key válida de GoHighLevel
+VALID_API_KEYS = ["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6ImpZRVplMEhFQWFwU0pST2JzT0xBIiwidmVyc2lvbiI6MSwiaWF0IjoxNzM4NDM5ODcyNDI5LCJzdWIiOiJvVFB4eUZVWkhhNkV3a0JpY0dwayJ9.vA0HXrmv7hM0wF6wOTauT36fNNdaLwdLqefb0qO5CUI"]
 
-@app.route('/oauth/callback')
-def oauth_callback():
-    auth_code = request.args.get('code')
-    
-    if not auth_code:
-        return jsonify({"error": "No authorization code received"}), 400
+@app.route('/oauth/callback', methods=['POST'])
+def authenticate():
+    data = request.json
+    api_key = data.get("api_key")
 
-    return jsonify({"message": "Authorization successful", "auth_code": auth_code})
+    if api_key in VALID_API_KEYS:
+        return jsonify({"status": "verified"}), 200
+    else:
+        return jsonify({"error": "Invalid API Key"}), 401
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
