@@ -10,7 +10,7 @@
 # manejar_mensaje
 # enviar_mensaje
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from logic_imatek import procesar_mensaje
 import requests
 import os
@@ -59,6 +59,20 @@ limiter = Limiter(
 @app.route("/")
 def home():
     return "Chatbot Clínica Imatek funcionando correctamente."
+
+app = Flask(__name__)
+
+@app.route('/oauth/callback')
+def oauth_callback():
+    auth_code = request.args.get('code')
+    
+    if not auth_code:
+        return jsonify({"error": "No authorization code received"}), 400
+
+    return jsonify({"message": "Authorization successful", "auth_code": auth_code})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
 
 # Función para conectar a la base de datos
 def conectar_db():
