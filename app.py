@@ -60,44 +60,45 @@ limiter = Limiter(
 def home():
     return "Chatbot funcionando correctamente."
 
-# API Key válida de GoHighLevel (Pega aquí tu API Key real)
+# API Key válida de GoHighLevel (Reemplaza con la API Key correcta)
 VALID_API_KEYS = ["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6ImpZRVplMEhFQWFwU0pST2JzT0xBIiwidmVyc2lvbiI6MSwiaWF0IjoxNzM4NDM5ODcyNDI5LCJzdWIiOiJvVFB4eUZVWkhhNkV3a0JpY0dwayJ9.vA0HXrmv7hM0wF6wOTauT36fNNdaLwdLqefb0qO5CUI"]
 
 @app.route('/oauth/callback', methods=['POST'])
 def authenticate():
     try:
-        # Capturar TODO el request
-        data = request.json if request.is_json else {}  
-        headers = dict(request.headers)  # Convertir headers a diccionario
-        raw_data = request.data.decode("utf-8")  # Capturar el cuerpo en texto
+        # Capturar los datos de la solicitud
+        data = request.json if request.is_json else {}
+        headers = dict(request.headers)
 
-        api_key = data.get("api_key", "").strip()  # Intentar obtener desde JSON
-        header_api_key = request.headers.get("Authorization", "").replace("Bearer ", "").strip()  # Desde Headers
-        alt_api_key = data.get("Authorization", "").strip()  # Si GHL lo manda en otro campo
+        # Intentar obtener la API Key desde JSON
+        api_key = data.get("api_key", "").strip()
 
-        # 📌 Debug: Imprimir TODO lo que recibe el servidor
+        # Si no está en el cuerpo, buscar en los Headers
+        if not api_key:
+            auth_header = request.headers.get("Authorization", "").strip()
+            if auth_header.startswith("Bearer "):
+                api_key = auth_header[7:]
+
+        # Debugging: Mostrar lo que recibe el servidor
         print("🔹 Datos JSON recibidos:", data)
         print("🔹 Headers recibidos:", headers)
-        print("🔹 Cuerpo crudo recibido:", raw_data)
-        print("🔹 API Key en JSON:", api_key)
-        print("🔹 API Key en Headers:", header_api_key)
-        print("🔹 API Key en otro campo:", alt_api_key)
+        print("🔹 API Key detectada:", api_key)
 
-        # Validar API Key en todas las fuentes posibles
-        if api_key in VALID_API_KEYS or header_api_key in VALID_API_KEYS or alt_api_key in VALID_API_KEYS:
-            print("✅ Autenticación exitosa con API Key:", api_key or header_api_key or alt_api_key)
+        # Validar la API Key
+        if api_key in VALID_API_KEYS:
+            print("✅ Autenticación exitosa")
             return jsonify({"status": "verified"}), 200
         else:
-            print("❌ API Key inválida recibida:", api_key or header_api_key or alt_api_key)
+            print("❌ API Key inválida:", api_key)
             return jsonify({"error": "Invalid API Key"}), 401
 
     except Exception as e:
-        print("⚠️ Error en la autenticación:", str(e))  
+        print("⚠️ Error en la autenticación:", str(e))
         return jsonify({"error": "Internal Server Error"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
+    
 # Función para conectar a la base de datos
 def conectar_db():
     try:
