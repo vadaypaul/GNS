@@ -8,6 +8,10 @@ ACCESS_TOKEN = "EEAAIl3Q5cPEoBOx9qYVbFwbRFlOCOSfb5ZAJIsH7mJdLWCW7f6ZBfL8ue8CE7lV
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
 
+def procesar_mensaje(mensaje, sender_id, pagina_id=None):
+    # Código de la función aquí
+    return "Mensaje procesado"
+
 def enviar_mensaje(sender_id, respuesta):
     """
     Envía un mensaje al usuario a través de la API de Facebook Messenger.
