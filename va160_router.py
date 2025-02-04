@@ -6,8 +6,6 @@ import hashlib
 import logging
 from flask import Flask, request, jsonify
 from chatbot_gns.app_gns import handle_gns
-from chatbot_imatek.app_imatek import handle_imatek 
-from chatbot_edward.app_edward import handle_edward
 
 # Configuración básica
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -68,9 +66,9 @@ def handle_gns(entry):
 # MAPEADO DE CLIENTES: Asignación por ID de página
 # =============================================================================
 CLIENT_HANDLERS = {
-    "530247733507628": handle_edward,
-    "100827312960661": handle_imatek,
-    "530247733507628": handle_gns,
+    "530247733507628": "",
+    "100827312960661": "",
+    "530247733507628": "https://gateway-navigation-software.onrender.com",
 }
 
 # =============================================================================
