@@ -53,9 +53,9 @@ def handle_imatek(entry):
     return
 
 # =============================================================================
-# CLIENTE: SANDBOX
+# CLIENTE: GNS
 # =============================================================================
-def handle_sandbox(entry):
+def handle_gns(entry):
     """
     Llama a la lógica específica de IMATEK.
     Aquí se integraría el procesamiento definido en app_imatek.py.
@@ -74,7 +74,7 @@ def handle_sandbox(entry):
 CLIENT_HANDLERS = {
     "530247733507628": handle_edward,
     "100827312960661": handle_imatek,
-    "551912154672950": handle_sandbox,
+    "530247733507628": handle_gns,
 }
 
 # =============================================================================
