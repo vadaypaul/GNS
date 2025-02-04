@@ -1,6 +1,5 @@
 Flask>=2.3.2,<3.0.0
 flask
-gpt_gns
 gunicorn>=20.1.0
 logging
 openai
