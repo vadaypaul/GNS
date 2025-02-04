@@ -12,8 +12,8 @@ import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify
-from gpt_gns import interpretar_mensaje
-from logic_gns import consultar_disponibilidad, agendar_cita, modificar_cita, cancelar_cita
+from chatbot_gns.gpt_gns import interpretar_mensaje
+from chatbot_gns.logic_gns import consultar_disponibilidad, agendar_cita, modificar_cita, cancelar_cita
 
 # Configuración básica de Flask y logging
 app = Flask(__name__)
