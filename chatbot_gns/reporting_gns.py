@@ -4,6 +4,9 @@ from datetime import datetime
 # Configuración de logging para imprimir en la terminal
 logging.basicConfig(level=logging.INFO)
 
+def generar_reporte_actividad():
+    return "Reporte de actividad generado"
+
 def generar_reporte(mensaje, respuesta, sender_id):
     """
     Genera un reporte simple de la conversación y lo imprime en la terminal.
