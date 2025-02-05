@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 # Variables de entorno y constantes
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_GNS")
-VERIFY_TOKEN = os.getenv("FACEBOOK_VERIFY_TOKEN_GNS")
+VERIFY_TOKEN = "VadaySandbox2025"
 
 # Configuración de la base de datos PostgreSQL
 DB_CONFIG = {
