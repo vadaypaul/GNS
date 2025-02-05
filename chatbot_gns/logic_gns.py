@@ -3,7 +3,7 @@ import logging
 import psycopg2
 import requests
 from psycopg2.extras import RealDictCursor
-from gpt_gns import interpretar_mensaje
+from chatbot_gns.gpt_gns import interpretar_mensaje
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
