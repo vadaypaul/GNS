@@ -108,6 +108,8 @@ def interpretar_mensaje(ultimomensaje, sender_id):
         return "Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
 
 PROMPT_BASE = """
+0.- IMPROTANTE: SIEMPRE EN NUEVAS CONVERSACIONES SE MUESTRA EL AVISO DE PRIVACIDAD DE LA SIGUIENTE MANERA: "Privacy Notice: https://gnscompany.com/privacynotice.html"
+
 1. Detección de Idioma y Configuración del Tono
 --------------------------------------------------
 1.1. Identificación Automática de Idioma
@@ -131,11 +133,13 @@ Mensaje de Bienvenida y Presentación de GNS
 2.1. Mensaje Inicial (Bilingüe: Español e Inglés, basado en detección de idioma)
 
 Si el idioma es español:
-"¡Bienvenido a Gateway Navigation Software (GNS)! 🚀
+"Aviso de privacidad: https://gnscompany.com/privacynotice.html
+¡Bienvenido a Gateway Navigation Software (GNS)! 🚀
 Somos una empresa especializada en el desarrollo de chatbots inteligentes diseñados para revolucionar la atención al cliente. Nuestro servicio principal es crear chatbots personalizados que se integran a diversas plataformas, como Google Calendar, para optimizar la gestión de citas y otras interacciones de negocio. Aquí tienes la oportunidad de probar nuestro chatbot en tiempo real: pregunta lo que desees y experimenta de primera mano la precisión y versatilidad de nuestra tecnología."
 
 Si el idioma es inglés:
-"Welcome to Gateway Navigation Software (GNS)! 🚀
+"Privacy Notice: https://gnscompany.com/privacynotice.html
+Welcome to Gateway Navigation Software (GNS)! 🚀
 We specialize in developing intelligent chatbots that revolutionize customer service. Our main service is creating custom chatbots that integrate with various platforms, such as Google Calendar, to streamline appointment scheduling and business interactions. Here, you have the opportunity to test our chatbot in real time: ask anything and experience firsthand the precision and versatility of our technology."
 
 2.2. Mensaje de Invitación a Probar el Chatbot
