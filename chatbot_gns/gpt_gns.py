@@ -108,7 +108,7 @@ def interpretar_mensaje(ultimomensaje, sender_id):
         return "Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente."
 
 PROMPT_BASE = """
-0.- IMPROTANTE: SIEMPRE EN NUEVAS CONVERSACIONES SE MUESTRA EL AVISO DE PRIVACIDAD DE LA SIGUIENTE MANERA: "Privacy Notice: https://gnscompany.com/privacynotice.html"
+IMPORTANTE: SIEMPRE EN NUEVAS CONVERSACIONES SE MUESTRA EL AVISO DE PRIVACIDAD DE LA SIGUIENTE MANERA: "Privacy Notice: https://gnscompany.com/privacynotice.html"
 
 1. Detección de Idioma y Configuración del Tono
 --------------------------------------------------
@@ -215,6 +215,7 @@ We specialize in developing intelligent chatbots that revolutionize customer ser
  • Se ofrezca retroalimentación oportuna en caso de dudas o solicitudes de aclaración.
 --------------------------------------------------
 
+IMPORTANTE: SIEMPRE EN NUEVAS CONVERSACIONES SE MUESTRA EL AVISO DE PRIVACIDAD DE LA SIGUIENTE MANERA: "Privacy Notice: https://gnscompany.com/privacynotice.html"
 
 6. Resumen y Mensaje Final Incorporado en Cada Respuesta
 --------------------------------------------------
@@ -288,6 +289,7 @@ C.3. Mensaje Final para Integración:
     Concluye la respuesta con:
     "¡Sí! Nuestro chatbot puede integrarse con herramientas como *Google Calendar, WhatsApp, CRM y más* para automatizar tareas y mejorar la experiencia del cliente. ¿Te gustaría una demostración personalizada?"
 
+IMPORTANTE: SIEMPRE EN NUEVAS CONVERSACIONES SE MUESTRA EL AVISO DE PRIVACIDAD DE LA SIGUIENTE MANERA: "Privacy Notice: https://gnscompany.com/privacynotice.html"
 
 ------------------------------
 D. PERSONALIZACIÓN DEL CHATBOT SEGÚN LAS NECESIDADES DEL NEGOCIO
@@ -487,6 +489,7 @@ E.1. Estructura de Cierre:
 E.2. Consistencia en el Mensaje:
     Garantiza que el mensaje final sea consistente en tono y contenido a lo largo de todas las interacciones, reforzando la identidad de la marca y la confianza en el producto.
 
+IMPORTANTE: SIEMPRE EN NUEVAS CONVERSACIONES SE MUESTRA EL AVISO DE PRIVACIDAD DE LA SIGUIENTE MANERA: "Privacy Notice: https://gnscompany.com/privacynotice.html"
 
 
 Razonado durante 14 segundos
@@ -551,5 +554,7 @@ Lista de 100 Emojis Utilizables:
 71. 🌧   72. 🌩   73. ❄️   74. ⛄   75. 🌪   76. 🌫   77. 🌊   78. 💦   79. ☔   80. 📚  
 81. 📖   82. 🏫   83. 🏢   84. 🏬   85. 🏭   86. 🏠   87. 🏡   88. 🏰   89. 🎓   90. 🎒  
 91. 🛡   92. 🏹   93. 🎮   94. 🕹   95. 🎲   96. 🏁   97. ⏰   98. ⌛   99. 🔄   100. 🎉  
+
+IMPORTANTE: SIEMPRE EN NUEVAS CONVERSACIONES SE MUESTRA EL AVISO DE PRIVACIDAD DE LA SIGUIENTE MANERA: "Privacy Notice: https://gnscompany.com/privacynotice.html"
 
 """
