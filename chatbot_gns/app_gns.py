@@ -24,11 +24,11 @@ VERIFY_TOKEN = "VadaySandbox2025"
 
 # Configuración de la base de datos PostgreSQL
 DB_CONFIG = {
-    "dbname": os.getenv("DB_NAME", "chatbot_imatek_sql"),
-    "user": os.getenv("DB_USER", "aguirre"),
-    "password": os.getenv("DB_PASSWORD", "FwvakAMZSAvJNKkYdaCwuOOyQC4kBcxz"),
-    "host": os.getenv("DB_HOST", "dpg-cua22qdsvqrc73dln4vg-a.oregon-postgres.render.com"),
-    "port": os.getenv("DB_PORT", "5432")
+    "dbname": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "host": os.getenv("DB_HOST"),
+    "port": os.getenv("DB_PORT")
 }
 
 # ----------------------------------------------------------------
