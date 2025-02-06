@@ -35,13 +35,17 @@ DB_CONFIG = {
 # 📌 Conexión a la Base de Datos
 # ----------------------------------------------------------------
 def conectar_db():
-    """Establece una conexión a la base de datos PostgreSQL."""
+    """Establece una conexión a la base de datos PostgreSQL con diagnóstico detallado."""
     try:
         conexion = psycopg2.connect(**DB_CONFIG)
         return conexion
+    except psycopg2.OperationalError as e:
+        logging.error(f"❌ Error operacional: {e.pgcode} - {e.pgerror}")
+    except psycopg2.DatabaseError as e:
+        logging.error(f"⚠️ Error de base de datos: {e}")
     except Exception as e:
-        logging.error(f"❌ Error al conectar con la base de datos: {e}")
-        return None
+        logging.error(f"🚨 Error inesperado al conectar con la base de datos: {e}")
+    return None
 
 # ----------------------------------------------------------------
 # 📌 Funciones para Manejo de Mensajes
