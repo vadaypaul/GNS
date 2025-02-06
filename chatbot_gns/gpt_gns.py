@@ -5,7 +5,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 # Configuración de OpenAI usando variable de entorno (para mayor seguridad)
-openai.api_key = os.getenv("OPENAI_API_KEY_GNS")  # Reemplaza con tu API key o configúrala en el entorno
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Reemplaza con tu API key o configúrala en el entorno
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
