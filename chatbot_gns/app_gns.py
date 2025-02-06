@@ -35,7 +35,7 @@ DB_CONFIG = {
 # 📌 Conexión a la Base de Datos
 # ----------------------------------------------------------------
 def conectar_db():
-    """Establece una conexión segura a la base de datos PostgreSQL con SSL."""
+    """Establece una conexión segura a la base de datos PostgreSQL con SSL obligatorio."""
     try:
         conexion = psycopg2.connect(
             dbname="chatbot_imatek_sql",
@@ -43,8 +43,9 @@ def conectar_db():
             password="FwvakAMZSAvJNKkYdaCwuOOyQC4kBcxz",
             host="dpg-cua22qdsvqrc73dln4vg-a.oregon-postgres.render.com",
             port="5432",
-            sslmode="require"  # 🔥 Esto fuerza el uso de SSL
+            sslmode="require"  # 🔥 Asegura que se use SSL
         )
+        logging.info("✅ Conexión exitosa a la base de datos.")
         return conexion
     except psycopg2.OperationalError as e:
         logging.error(f"❌ Error operacional (conexión fallida): {e}")
