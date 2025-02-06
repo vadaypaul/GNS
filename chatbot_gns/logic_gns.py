@@ -10,11 +10,11 @@ logging.basicConfig(level=logging.INFO)
 
 # Configuración de conexión a PostgreSQL (se recomienda usar variables de entorno)
 DB_CONFIG = {
-    "dbname": os.getenv("DB_NAME", "chatbot_imatek_sql"),
-    "user": os.getenv("DB_USER", "aguirre"),
-    "password": os.getenv("DB_PASSWORD", "FwvakAMZSAvJNKkYdaCwuOOyQC4kBcxz"),
-    "host": os.getenv("DB_HOST", "dpg-cua22qdsvqrc73dln4vg-a.oregon-postgres.render.com"),
-    "port": os.getenv("DB_PORT", "5432")
+    "dbname": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "host": os.getenv("DB_HOST"),
+    "port": os.getenv("DB_PORT")
 }
 
 def conectar_db():
