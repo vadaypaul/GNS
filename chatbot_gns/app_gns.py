@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 # Variables de entorno y constantes
 ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN_GNS")
-VERIFY_TOKEN = "VadaySandbox2025"
+VERIFY_TOKEN = os.getenv("VERIFY_TOKEN_GNS")  # Ahora se usa una variable de entorno
 
 # Configuración de la base de datos PostgreSQL
 DB_CONFIG = {
@@ -35,16 +35,9 @@ DB_CONFIG = {
 # 📌 Conexión a la Base de Datos
 # ----------------------------------------------------------------
 def conectar_db():
-    """Establece una conexión segura a la base de datos PostgreSQL con SSL obligatorio."""
+    """Establece una conexión segura a la base de datos PostgreSQL sin SSL."""
     try:
-        conexion = psycopg2.connect(
-            dbname="chatbot_imatek_sql",
-            user="aguirre",
-            password="FwvakAMZSAvJNKkYdaCwuOOyQC4kBcxz",
-            host="dpg-cua22qdsvqrc73dln4vg-a.oregon-postgres.render.com",
-            port="5432",
-            sslmode="require"  # 🔥 Asegura que se use SSL
-        )
+        conexion = psycopg2.connect(**DB_CONFIG)
         logging.info("✅ Conexión exitosa a la base de datos.")
         return conexion
     except psycopg2.OperationalError as e:
