@@ -73,7 +73,7 @@ def enviar_mensaje_manychat(subscriber_id, respuesta_final):
         print(f"[WARNING] Respuesta vacía o no válida para {subscriber_id}. Usando mensaje por defecto.")
         respuesta_final = "Lo siento, hubo un error al procesar tu solicitud."
 
-    url = "https://api.manychat.com/fb/sendContent"
+    url = "https://api.manychat.com/fb/sending/sendContent"
     headers = {
         "Authorization": f"Bearer {MANYCHAT_API_KEY}",
         "Content-Type": "application/json"
