@@ -20,11 +20,11 @@ def conectar_db():
     """
     try:
         conexion = psycopg2.connect(
-            dbname=os.getenv("DB_NAME_IMATEK"),
-            user=os.getenv("DB_USERNAME_IMATEK"),
-            password=os.getenv("DB_PASSWORD_IMATEK"),
-            host=os.getenv("DB_HOST_IMATEK"),
-            port=os.getenv("DB_PORT_IMATEK")
+            dbname=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT")
         )
         return conexion
     except psycopg2.OperationalError as e:
