@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("GPT_Imatek")
 
 # Configuración de OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = "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"
 OPENAI_TIMEOUT = 10  # Tiempo de espera para solicitudes a OpenAI
 
 # Configuración de conexión a la base de datos
