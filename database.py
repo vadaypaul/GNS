@@ -5,8 +5,9 @@ import os
 app = FastAPI()
 
 # Conexión a PostgreSQL en Render
-DATABASE_URL = os.getenv("DATABASE_URL", "tu_url_de_postgres")
-
+DATABASE_URL = os.getenv("EXTERNAL_DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL no está configurada correctamente")
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
 
