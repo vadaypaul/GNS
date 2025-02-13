@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException, Depends
 import asyncpg
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 app = FastAPI()
 
@@ -38,7 +38,7 @@ async def init_db():
 async def startup():
     await init_db()
 
-# Endpoint ManyChat Webhook
+# Guardar mensaje desde ManyChat
 @app.post("/manychat-webhook")
 async def manychat_webhook(request: Request, db=Depends(get_db)):
     try:
@@ -54,7 +54,7 @@ async def manychat_webhook(request: Request, db=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# Guardar mensajes con mejor gestión de errores
+# Guardar mensaje con fecha
 @app.post("/save_message/")
 async def save_message(request: Request, db=Depends(get_db)):
     try:
@@ -63,20 +63,20 @@ async def save_message(request: Request, db=Depends(get_db)):
         fecha = data.get("fecha")  # Asegurar que se manda la fecha
         message = data.get("message")
         
-        if not user_id or not message:
-            raise HTTPException(status_code=400, detail="user_id y message son requeridos")
+        if not user_id or not message or not fecha:
+            raise HTTPException(status_code=400, detail="user_id, fecha y message son requeridos")
 
-        await db.execute("INSERT INTO historial (user_id, fecha, message) VALUES ($1, $2, $3)",
+        await db.execute("INSERT INTO historial (user_id, timestamp, message) VALUES ($1, $2, $3)",
                          user_id, fecha, message)
         return {"status": "Mensaje guardado correctamente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# Obtener mensajes con mejor seguridad
+# Obtener los últimos 10 mensajes de un usuario
 @app.get("/get_messages/{user_id}")
 async def get_messages(user_id: str, db=Depends(get_db)):
     try:
-        messages = await db.fetch("SELECT message FROM historial WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 20", user_id)
-        return {"messages": [msg["message"] for msg in messages]}
+        messages = await db.fetch("SELECT timestamp, message FROM historial WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 10", user_id)
+        return {"messages": [{"timestamp": msg["timestamp"], "message": msg["message"]} for msg in messages]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
