@@ -6,7 +6,7 @@ from typing import Dict, Any
 app = FastAPI()
 
 # Obtener la URL de la base de datos desde la variable de entorno correcta
-DATABASE_URL = "postgresql://aguirre:FwvakAMZSAvJNKkYdaCwuOOyQC4kBcxz@dpg-cua22qdsvqrc73dln4vg-a.oregon-postgres.render.com/chatbot_imatek_sql"
+DATABASE_URL = "postgresql://aguirre:1jWMW9DucSDBxGPn2D3vsQQPnJLhyUKz@dpg-cumn15t6l47c7395k4ng-a.oregon-postgres.render.com/database_shpn"
 
 if not DATABASE_URL:
     raise ValueError("La variable de entorno 'external_base_url' no está configurada.")
