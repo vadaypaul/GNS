@@ -1,50 +1,37 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import psycopg2
 import os
 
 app = FastAPI()
 
 # Conexión a PostgreSQL en Render
-DATABASE_URL = os.getenv("EXTERNAL_DATABASE_URL")
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL no está configurada correctamente")
+DATABASE_URL = "postgresql://aguirre:FwvakAMZSAvJNKkYdaCwuOOyQC4kBcxz@dpg-cua22qdsvqrc73dln4vg-a.oregon-postgres.render.com/chatbot_imatek_sql"
+
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
 
-# Crear tabla si no existe
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS historial (
-        id SERIAL PRIMARY KEY,
-        usuario_id TEXT,
-        mensaje TEXT,
-        rol TEXT,  -- "usuario" o "bot"
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-""")
-conn.commit()
+# Definir modelo de datos
+class Message(BaseModel):
+    user_id: str
+    message: str
 
-@app.post("/guardar_mensaje")
-async def guardar_mensaje(data: Request):
-    body = await data.json()
-    usuario_id = body.get("usuario_id")
-    mensaje = body.get("mensaje")
-    rol = body.get("rol")  # Puede ser "usuario" o "bot"
+# Endpoint para guardar mensajes desde ManyChat
+@app.post("/save_message")
+def save_message(data: Message):
+    try:
+        cursor.execute("INSERT INTO chat_history (user_id, message) VALUES (%s, %s)", (data.user_id, data.message))
+        conn.commit()
+        return {"status": "success", "message": "Message saved"}
+    except Exception as e:
+        return HTTPException(status_code=500, detail=str(e))
 
-    cursor.execute("INSERT INTO historial (usuario_id, mensaje, rol) VALUES (%s, %s, %s)", (usuario_id, mensaje, rol))
-    conn.commit()
-    return {"status": "guardado"}
-
-@app.get("/obtener_historial/{usuario_id}")
-async def obtener_historial(usuario_id: str):
-    # Obtener últimos 10 mensajes del usuario
-    cursor.execute("SELECT mensaje FROM historial WHERE usuario_id = %s AND rol = 'usuario' ORDER BY timestamp DESC LIMIT 10", (usuario_id,))
-    mensajes_usuario = [row[0] for row in cursor.fetchall()]
-
-    # Obtener últimos 10 mensajes del bot
-    cursor.execute("SELECT mensaje FROM historial WHERE usuario_id = %s AND rol = 'bot' ORDER BY timestamp DESC LIMIT 10", (usuario_id,))
-    mensajes_bot = [row[0] for row in cursor.fetchall()]
-
-    return {
-        "mensajes_usuario": mensajes_usuario[::-1],  # Revertir para mantener orden cronológico
-        "mensajes_bot": mensajes_bot[::-1]
-    }
+# Endpoint para obtener el historial de mensajes
+@app.get("/get_history/{user_id}")
+def get_history(user_id: str):
+    try:
+        cursor.execute("SELECT message FROM chat_history WHERE user_id = %s ORDER BY id DESC LIMIT 10", (user_id,))
+        messages = cursor.fetchall()
+        return {"history": [msg[0] for msg in messages]}
+    except Exception as e:
+        return HTTPException(status_code=500, detail=str(e))
