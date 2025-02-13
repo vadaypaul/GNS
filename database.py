@@ -54,7 +54,8 @@ async def manychat_webhook(request: Request, db=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-@app.post("/manychat-webhook")
+# Guardar mensajes con mejor gestión de errores
+@app.post("/save_message/")
 async def save_message(request: Request, db=Depends(get_db)):
     try:
         data = await request.json()
@@ -62,11 +63,11 @@ async def save_message(request: Request, db=Depends(get_db)):
         fecha = data.get("fecha")  # Asegurar que se manda la fecha
         message = data.get("message")
         
-        if not user_id or not message or not sender:
-            raise HTTPException(status_code=400, detail="user_id, message y sender son requeridos")
+        if not user_id or not message:
+            raise HTTPException(status_code=400, detail="user_id y message son requeridos")
 
-        await db.execute("INSERT INTO historial (user_id, fecha, message, sender) VALUES ($1, $2, $3, $4)",
-                         user_id, fecha, message, sender)
+        await db.execute("INSERT INTO historial (user_id, fecha, message) VALUES ($1, $2, $3)",
+                         user_id, fecha, message)
         return {"status": "Mensaje guardado correctamente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
