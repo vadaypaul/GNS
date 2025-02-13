@@ -61,7 +61,6 @@ async def save_message(request: Request, db=Depends(get_db)):
         user_id = data.get("user_id")
         fecha = data.get("fecha")  # Asegurar que se manda la fecha
         message = data.get("message")
-        sender = data.get("sender")  # Puede ser 'bot' o 'usuario'
         
         if not user_id or not message or not sender:
             raise HTTPException(status_code=400, detail="user_id, message y sender son requeridos")
