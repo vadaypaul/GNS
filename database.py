@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Request
-import psycopg2
+from fastapi import FastAPI, Request, HTTPException, Depends
+import asyncpg
 import os
 from typing import Dict, Any
 
@@ -9,46 +9,72 @@ app = FastAPI()
 DATABASE_URL = "postgresql://aguirre:1jWMW9DucSDBxGPn2D3vsQQPnJLhyUKz@dpg-cumn15t6l47c7395k4ng-a.oregon-postgres.render.com/database_shpn"
 
 if not DATABASE_URL:
-    raise ValueError("La variable de entorno 'external_base_url' no está configurada.")
+    raise ValueError("La variable de entorno 'DATABASE_URL' no está configurada.")
 
-# Intentar conexión con PostgreSQL
-try:
-    conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-    cursor = conn.cursor()
-
-    # Crear tabla si no existe
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS historial (
-            id SERIAL PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            message TEXT NOT NULL,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-except Exception as e:
-    raise RuntimeError(f"Error al conectar con la base de datos: {e}")
-
-@app.post("/save_message/")
-async def save_message(data: Dict[str, Any]):
-    user_id = data.get("user_id")
-    message = data.get("message")
-
-    if not user_id or not message:
-        return {"error": "user_id y message son requeridos"}
-
+# Función para obtener conexión a la base de datos
+async def get_db():
+    conn = await asyncpg.connect(DATABASE_URL)
     try:
-        cursor.execute("INSERT INTO historial (user_id, message) VALUES (%s, %s)", (user_id, message))
-        conn.commit()
+        yield conn
+    finally:
+        await conn.close()
+
+# Crear la tabla si no existe
+async def init_db():
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS historial (
+                id SERIAL PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                message TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    finally:
+        await conn.close()
+
+@app.on_event("startup")
+async def startup():
+    await init_db()
+
+# Endpoint ManyChat Webhook
+@app.post("/manychat-webhook")
+async def manychat_webhook(request: Request, db=Depends(get_db)):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        message = data.get("message")
+        
+        if not user_id or not message:
+            raise HTTPException(status_code=400, detail="user_id y message son requeridos")
+        
+        await db.execute("INSERT INTO historial (user_id, message) VALUES ($1, $2)", user_id, message)
         return {"status": "Mensaje guardado correctamente"}
     except Exception as e:
-        return {"error": f"Error al guardar el mensaje: {e}"}
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-@app.get("/get_messages/{user_id}")
-async def get_messages(user_id: str):
+# Guardar mensajes con mejor gestión de errores
+@app.post("/save_message/")
+async def save_message(request: Request, db=Depends(get_db)):
     try:
-        cursor.execute("SELECT message FROM historial WHERE user_id = %s ORDER BY timestamp DESC LIMIT 20", (user_id,))
-        messages = cursor.fetchall()
-        return {"messages": [msg[0] for msg in messages]}
+        data = await request.json()
+        user_id = data.get("user_id")
+        message = data.get("message")
+
+        if not user_id or not message:
+            raise HTTPException(status_code=400, detail="user_id y message son requeridos")
+        
+        await db.execute("INSERT INTO historial (user_id, message) VALUES ($1, $2)", user_id, message)
+        return {"status": "Mensaje guardado correctamente"}
     except Exception as e:
-        return {"error": f"Error al recuperar mensajes: {e}"}
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+# Obtener mensajes con mejor seguridad
+@app.get("/get_messages/{user_id}")
+async def get_messages(user_id: str, db=Depends(get_db)):
+    try:
+        messages = await db.fetch("SELECT message FROM historial WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 20", user_id)
+        return {"messages": [msg["message"] for msg in messages]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
