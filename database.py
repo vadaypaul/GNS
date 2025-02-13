@@ -1,37 +1,41 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, Request
 import psycopg2
 import os
+from typing import Dict, Any
 
 app = FastAPI()
 
 # Conexión a PostgreSQL en Render
-DATABASE_URL = "postgresql://aguirre:FwvakAMZSAvJNKkYdaCwuOOyQC4kBcxz@dpg-cua22qdsvqrc73dln4vg-a.oregon-postgres.render.com/chatbot_imatek_sql"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://usuario:contraseña@host:puerto/base_de_datos")
 
-conn = psycopg2.connect(DATABASE_URL)
+conn = psycopg2.connect(DATABASE_URL, sslmode="require")
 cursor = conn.cursor()
 
-# Definir modelo de datos
-class Message(BaseModel):
-    user_id: str
-    message: str
+# Crear tabla si no existe
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS historial (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT,
+        message TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+conn.commit()
 
-# Endpoint para guardar mensajes desde ManyChat
-@app.post("/save_message")
-def save_message(data: Message):
-    try:
-        cursor.execute("INSERT INTO chat_history (user_id, message) VALUES (%s, %s)", (data.user_id, data.message))
-        conn.commit()
-        return {"status": "success", "message": "Message saved"}
-    except Exception as e:
-        return HTTPException(status_code=500, detail=str(e))
+@app.post("/save_message/")
+async def save_message(data: Dict[str, Any]):
+    user_id = data.get("user_id")
+    message = data.get("message")
 
-# Endpoint para obtener el historial de mensajes
-@app.get("/get_history/{user_id}")
-def get_history(user_id: str):
-    try:
-        cursor.execute("SELECT message FROM chat_history WHERE user_id = %s ORDER BY id DESC LIMIT 10", (user_id,))
-        messages = cursor.fetchall()
-        return {"history": [msg[0] for msg in messages]}
-    except Exception as e:
-        return HTTPException(status_code=500, detail=str(e))
+    if not user_id or not message:
+        return {"error": "user_id y message son requeridos"}
+
+    cursor.execute("INSERT INTO historial (user_id, message) VALUES (%s, %s)", (user_id, message))
+    conn.commit()
+    return {"status": "Mensaje guardado correctamente"}
+
+@app.get("/get_messages/{user_id}")
+async def get_messages(user_id: str):
+    cursor.execute("SELECT message FROM historial WHERE user_id = %s ORDER BY timestamp DESC LIMIT 20", (user_id,))
+    messages = cursor.fetchall()
+    return {"messages": [msg[0] for msg in messages]}
