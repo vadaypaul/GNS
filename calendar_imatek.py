@@ -63,7 +63,7 @@ def get_availability():
 
             current_date += timedelta(days=1)
 
-        return jsonify({"available_slots": available_slots})
+        return jsonify({"available_slots": ", ".join(f"{slot['start']} - {slot['end']}" for slot in available_slots)})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
