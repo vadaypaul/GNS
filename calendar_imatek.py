@@ -91,18 +91,39 @@ credentials = service_account.Credentials.from_service_account_info(CREDENTIALS_
 
 @app.route("/create-event", methods=["POST"])
 def create_event():
-    # Código para crear evento
-    pass
+    data = request.json
+    event = {
+        "summary": data.get("summary", "Cita"),
+        "location": "Consultorio Principal",
+        "description": data.get("description", "Nombre común"),
+        "start": {"dateTime": data["start"], "timeZone": "America/Mexico_City"},
+        "end": {"dateTime": data["end"], "timeZone": "America/Mexico_City"}
+    }
+    response = requests.post(f"https://www.googleapis.com/calendar/v3/calendars/{CALENDAR_ID}/events",
+                             headers={"Authorization": f"Bearer {credentials.token}", "Content-Type": "application/json"},
+                             json=event)
+    return response.json()
 
 @app.route("/update-event/<event_id>", methods=["PUT"])
 def update_event(event_id):
-    # Código para modificar evento
-    pass
+    data = request.json
+    event = {
+        "summary": data.get("summary", "Cita"),
+        "location": "Consultorio Principal",
+        "description": data.get("description", "Nombre común"),
+        "start": {"dateTime": data["start"], "timeZone": "America/Mexico_City"},
+        "end": {"dateTime": data["end"], "timeZone": "America/Mexico_City"}
+    }
+    response = requests.put(f"https://www.googleapis.com/calendar/v3/calendars/{CALENDAR_ID}/events/{event_id}",
+                            headers={"Authorization": f"Bearer {credentials.token}", "Content-Type": "application/json"},
+                            json=event)
+    return response.json()
 
 @app.route("/delete-event/<event_id>", methods=["DELETE"])
 def delete_event(event_id):
-    # Código para eliminar evento
-    pass
+    response = requests.delete(f"https://www.googleapis.com/calendar/v3/calendars/{CALENDAR_ID}/events/{event_id}",
+                               headers={"Authorization": f"Bearer {credentials.token}"})
+    return {"message": "Evento eliminado"} if response.status_code == 204 else response.json()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
