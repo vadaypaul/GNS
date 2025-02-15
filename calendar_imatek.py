@@ -10,13 +10,16 @@ from datetime import datetime, timedelta
 # Configuración de Flask
 app = Flask(__name__)
 
+DAYS_AHEAD = 30  # Número de días a revisar
+GOOGLE_API_URL = "https://www.googleapis.com/calendar/v3/calendars"  # URL base de la API de Google Calendar
+WORK_HOURS = range(7, 19)  # Horario laboral: 7 AM - 7 PM
+
 @app.route("/get-availability", methods=["GET"])
 def get_availability():
     try:
-        # Fechas de inicio y fin (próximo mes)
         now = datetime.utcnow()
         start_time = now.isoformat() + "Z"
-        end_time = (now + timedelta(days=30)).isoformat() + "Z"
+        end_time = (now + timedelta(days=DAYS_AHEAD)).isoformat() + "Z"
 
         # Obtener eventos desde Google Calendar
         headers = {"Authorization": f"Bearer {credentials.token}"}
@@ -26,44 +29,47 @@ def get_availability():
             "singleEvents": True,
             "orderBy": "startTime"
         }
-        response = requests.get(
-            f"https://www.googleapis.com/calendar/v3/calendars/{CALENDAR_ID}/events",
-            headers=headers,
-            params=params
-        )
+
+        response = requests.get(f"{GOOGLE_API_URL}/{CALENDAR_ID}/events", headers=headers, params=params)
+        if response.status_code != 200:
+            return jsonify({"error": "Error al obtener eventos del calendario"}), 500
+
         events = response.json().get("items", [])
 
-        # Horarios de trabajo: Lunes - Viernes, 7 AM - 7 PM
+        # Convertir eventos a intervalos de tiempo para comparación eficiente
+        event_intervals = []
+        for event in events:
+            try:
+                event_start = datetime.fromisoformat(event["start"].get("dateTime", "").replace("Z", ""))
+                event_end = datetime.fromisoformat(event["end"].get("dateTime", "").replace("Z", ""))
+                event_intervals.append((event_start, event_end))
+            except KeyError:
+                continue  # Ignorar eventos mal formateados
+
+        # Generar slots disponibles
         available_slots = []
         current_date = now
 
-        for _ in range(30):  # Revisamos los próximos 30 días
-            if current_date.weekday() < 5:  # 0=Lunes, 4=Viernes
-                for hour in range(7, 19):  # 7 AM - 7 PM
-                    start_slot = current_date.replace(hour=hour, minute=0, second=0)
+        for _ in range(DAYS_AHEAD):
+            if current_date.weekday() < 5:  # De lunes a viernes
+                for hour in WORK_HOURS:
+                    start_slot = current_date.replace(hour=hour, minute=0, second=0, microsecond=0)
                     end_slot = start_slot + timedelta(hours=1)
 
-                    # Formateamos a ISO8601 para comparación con Google Calendar
-                    start_slot_str = start_slot.isoformat() + "Z"
-                    end_slot_str = end_slot.isoformat() + "Z"
-
-                    # Verificamos si hay algún evento en este rango de 1 hora
+                    # Verificar si el slot está ocupado por algún evento
                     is_slot_taken = any(
-                        (event["start"]["dateTime"] <= start_slot_str < event["end"]["dateTime"]) or
-                        (event["start"]["dateTime"] < end_slot_str <= event["end"]["dateTime"])
-                        for event in events
+                        (event_start < end_slot and event_end > start_slot) for event_start, event_end in event_intervals
                     )
 
-                    # Si no está ocupado, agregamos la franja horaria disponible
                     if not is_slot_taken:
                         available_slots.append({
-                            "start": start_slot_str,
-                            "end": end_slot_str
+                            "start": start_slot.isoformat() + "Z",
+                            "end": end_slot.isoformat() + "Z"
                         })
 
             current_date += timedelta(days=1)
 
-        return jsonify({"available_slots": ", ".join(f"{slot['start']} - {slot['end']}" for slot in available_slots)})
+        return jsonify({"available_slots": available_slots})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
