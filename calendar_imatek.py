@@ -5,9 +5,55 @@ import google.auth
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 import requests
+from datetime import datetime, timedelta
 
 # Configuración de Flask
 app = Flask(__name__)
+
+@app.route("/get-availability", methods=["GET"])
+def get_availability():
+    try:
+        # Fechas de inicio y fin (próximo mes)
+        now = datetime.utcnow()
+        start_time = now.isoformat() + "Z"
+        end_time = (now + timedelta(days=30)).isoformat() + "Z"
+
+        # Obtener eventos desde Google Calendar
+        headers = {"Authorization": f"Bearer {credentials.token}"}
+        params = {
+            "timeMin": start_time,
+            "timeMax": end_time,
+            "singleEvents": True,
+            "orderBy": "startTime"
+        }
+        response = requests.get(
+            f"https://www.googleapis.com/calendar/v3/calendars/{CALENDAR_ID}/events",
+            headers=headers,
+            params=params
+        )
+        events = response.json().get("items", [])
+
+        # Horarios de trabajo: Lunes - Viernes, 7 AM - 7 PM
+        available_slots = []
+        current_date = now
+
+        for _ in range(30):  # Revisamos los próximos 30 días
+            if current_date.weekday() < 5:  # 0=Lunes, 4=Viernes
+                for hour in range(7, 19):  # 7 AM - 7 PM
+                    slot_time = current_date.replace(hour=hour, minute=0, second=0).isoformat() + "Z"
+                    if not any(
+                        event["start"]["dateTime"].startswith(slot_time[:10]) and
+                        hour >= int(event["start"]["dateTime"][11:13]) < int(event["end"]["dateTime"][11:13])
+                        for event in events
+                    ):
+                        available_slots.append(slot_time)
+
+            current_date += timedelta(days=1)
+
+        return jsonify({"available_slots": available_slots})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Credenciales de la cuenta de servicio
 CREDENTIALS_JSON = {
