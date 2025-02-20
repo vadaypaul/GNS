@@ -5,9 +5,13 @@ import requests
 from flask import Flask, request, jsonify
 from twilio.twiml.voice_response import VoiceResponse
 from flask_socketio import SocketIO
+import logging
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Configuración de logging para registrar errores
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Configuración de variables de entorno
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -30,33 +34,52 @@ def voice():
 
 @app.route("/transcription", methods=['POST'])
 def transcription():
-    call_sid = request.form['CallSid']
-    user_input = request.form['TranscriptionText']
+    try:
+        call_sid = request.form.get('CallSid', None)
+        user_input = request.form.get('TranscriptionText', None)
+        
+        if not call_sid:
+            raise ValueError("CallSid no recibido en la petición.")
+        
+        if not user_input:
+            logging.warning(f"No se recibió transcripción para la llamada {call_sid}")
+            response = VoiceResponse()
+            response.say("Lo siento, no entendí. ¿Puedes repetirlo?", voice='alice', language='es-MX')
+            response.record(timeout=5, transcribe=True, transcribe_callback="/transcription")
+            return str(response)
+        
+        # Mantener contexto de la conversación
+        if call_sid not in active_calls:
+            active_calls[call_sid] = []
+        active_calls[call_sid].append({"role": "user", "content": user_input})
+        
+        # Enviar a OpenAI para procesar la intención
+        completion = openai.ChatCompletion.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "system", "content": "Eres un asistente de citas médicas."}] + active_calls[call_sid]
+        )
+        
+        respuesta = completion['choices'][0]['message']['content']
+        active_calls[call_sid].append({"role": "assistant", "content": respuesta})
+        
+        response = VoiceResponse()
+        response.say(respuesta, voice='alice', language='es-MX')
+        response.record(timeout=5, transcribe=True, transcribe_callback="/transcription")
+        
+        return str(response)
     
-    # Mantener contexto de la conversación
-    if call_sid not in active_calls:
-        active_calls[call_sid] = []
-    active_calls[call_sid].append({"role": "user", "content": user_input})
-    
-    # Enviar a OpenAI para procesar la intención
-    completion = openai.ChatCompletion.create(
-        model="gpt-4-turbo",
-        messages=[{"role": "system", "content": "Eres un asistente de citas médicas."}] + active_calls[call_sid]
-    )
-    
-    respuesta = completion['choices'][0]['message']['content']
-    active_calls[call_sid].append({"role": "assistant", "content": respuesta})
-    
-    response = VoiceResponse()
-    response.say(respuesta, voice='alice', language='es-MX')
-    response.record(timeout=5, transcribe=True, transcribe_callback="/transcription")
-    
-    return str(response)
+    except Exception as e:
+        error_msg = f"Error en la transcripción o procesamiento de la llamada: {str(e)}"
+        logging.error(error_msg)
+        
+        response = VoiceResponse()
+        response.say(f"Ha ocurrido un error: {str(e)}. Por favor intenta de nuevo más tarde.", voice='alice', language='es-MX')
+        return str(response)
 
 @app.route("/end_call", methods=['POST'])
 def end_call():
-    call_sid = request.form['CallSid']
-    if call_sid in active_calls:
+    call_sid = request.form.get('CallSid', None)
+    if call_sid and call_sid in active_calls:
         del active_calls[call_sid]
     return "", 200
 
