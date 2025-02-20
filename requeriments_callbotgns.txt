@@ -1,0 +1,6 @@
+Flask
+gunicorn
+requests
+twilio
+flask-socketio
+openai
