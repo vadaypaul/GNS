@@ -29,14 +29,14 @@ active_calls = {}
 def voice():
     response = VoiceResponse()
     response.say("Hola, bienvenido. ¿Para qué fecha y hora quieres tu cita?", voice='alice', language='es-MX')
-    response.record(timeout=5, transcribe=True, transcribe_callback="/transcription")
+    response.gather(input="speech", action="/transcription", timeout=5, speechTimeout="auto", language="es-MX")
     return str(response)
 
 @app.route("/transcription", methods=['POST'])
 def transcription():
     try:
         call_sid = request.form.get('CallSid', None)
-        user_input = request.form.get('TranscriptionText', None)
+        user_input = request.form.get('SpeechResult', None)
         
         if not call_sid:
             raise ValueError("CallSid no recibido en la petición.")
@@ -45,7 +45,7 @@ def transcription():
             logging.warning(f"No se recibió transcripción para la llamada {call_sid}")
             response = VoiceResponse()
             response.say("Lo siento, no entendí. ¿Puedes repetirlo?", voice='alice', language='es-MX')
-            response.record(timeout=5, transcribe=True, transcribe_callback="/transcription")
+            response.gather(input="speech", action="/transcription", timeout=5, speechTimeout="auto", language="es-MX")
             return str(response)
         
         # Mantener contexto de la conversación
@@ -54,17 +54,17 @@ def transcription():
         active_calls[call_sid].append({"role": "user", "content": user_input})
         
         # Enviar a OpenAI para procesar la intención
-        completion = openai.ChatCompletion.create(
+        response_openai = openai.ChatCompletion.create(
             model="gpt-4-turbo",
             messages=[{"role": "system", "content": "Eres un asistente de citas médicas."}] + active_calls[call_sid]
         )
         
-        respuesta = completion['choices'][0]['message']['content']
+        respuesta = response_openai.choices[0].message['content']
         active_calls[call_sid].append({"role": "assistant", "content": respuesta})
         
         response = VoiceResponse()
         response.say(respuesta, voice='alice', language='es-MX')
-        response.record(timeout=5, transcribe=True, transcribe_callback="/transcription")
+        response.gather(input="speech", action="/transcription", timeout=5, speechTimeout="auto", language="es-MX")
         
         return str(response)
     
