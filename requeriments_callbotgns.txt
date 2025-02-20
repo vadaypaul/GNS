@@ -3,4 +3,5 @@ gunicorn
 requests
 twilio
 flask-socketio
-openai
+openai==0.28
+
