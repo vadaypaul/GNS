@@ -109,13 +109,10 @@ Asegúrate de confirmar la cita en cuanto quede registrada: "Listo, tu cita ha s
 
 import os
 import openai
-import json
-import requests
-import subprocess  # Para procesar el audio con FFmpeg
-from flask import Flask, request, jsonify, send_file
+import logging
+from flask import Flask, request, jsonify
 from twilio.twiml.voice_response import VoiceResponse
 from flask_socketio import SocketIO
-import logging
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -128,59 +125,25 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
-DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 
 openai.api_key = OPENAI_API_KEY
 
 # Almacenar el contexto de la conversación por llamada
 active_calls = {}
 
-# Función para generar audio TTS con OpenAI y procesarlo con FFmpeg
-def generate_speech(text, filename="response.mp3"):
-    try:
-        response = openai.audio.speech.create(
-            model="tts-1-hd",  # Usa el modelo HD para mejor calidad
-            voice="nova",  # Voz femenina hiperrealista
-            input=text
-        )
-        audio_url = response["data"]  # Obtiene la URL del audio generado
-        
-        # Descargar el archivo de audio
-        raw_filename = f"raw_{filename}"
-        audio_data = requests.get(audio_url).content
-        with open(raw_filename, "wb") as f:
-            f.write(audio_data)
-
-        # Aumentar volumen con FFmpeg (+10 dB) y optimizar el formato
-        processed_filename = f"processed_{filename}"
-        subprocess.run([
-            "ffmpeg", "-i", raw_filename, "-ar", "44100", "-ab", "128k",
-            "-filter:a", "volume=2.0", processed_filename
-        ], check=True)
-
-        return processed_filename
-    except Exception as e:
-        logging.error(f"Error generando audio: {str(e)}")
-        return None
-
-# Manejo de la llamada entrante
 @app.route("/voice", methods=['POST'])
 def voice():
-    text = "Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita? ¿o requieres otro tipo de información?"
-    audio_file = generate_speech(text)
-    
+    """Inicio de la llamada con Twilio TTS"""
     response = VoiceResponse()
-    if audio_file:
-        response.play(f"{request.host_url}static/{audio_file}")
-    else:
-        response.say(text, voice='alice', language='es-MX')
+    response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?",
+                 voice='Polly.Sofia', language='es-MX')  # Usamos una voz más realista de Twilio Polly
     
     response.gather(input="speech", action="/transcription", timeout=5, speechTimeout="auto", language="es-MX")
     return str(response)
 
-# Manejo de transcripción y respuesta del asistente
 @app.route("/transcription", methods=['POST'])
 def transcription():
+    """Procesa la entrada del usuario, genera respuesta con OpenAI y la devuelve con Twilio TTS"""
     try:
         call_sid = request.form.get('CallSid', None)
         user_input = request.form.get('SpeechResult', None)
@@ -190,19 +153,12 @@ def transcription():
         
         if not user_input:
             logging.warning(f"No se recibió transcripción para la llamada {call_sid}")
-            text = "Lo siento, no entendí. ¿Puedes repetirlo?"
-            audio_file = generate_speech(text)
-            
             response = VoiceResponse()
-            if audio_file:
-                response.play(f"{request.host_url}static/{audio_file}")
-            else:
-                response.say(text, voice='alice', language='es-MX')
-            
+            response.say("Lo siento, no entendí. ¿Puedes repetirlo?", voice='Polly.Sofia', language='es-MX')
             response.gather(input="speech", action="/transcription", timeout=5, speechTimeout="auto", language="es-MX")
             return str(response)
         
-        # Mantener contexto de la conversación (basado en la llamada)
+        # Mantener contexto de la conversación
         if call_sid not in active_calls:
             active_calls[call_sid] = []
         active_calls[call_sid].append({"role": "user", "content": user_input})
@@ -210,44 +166,29 @@ def transcription():
         # Enviar a OpenAI para procesar la intención
         response_openai = openai.ChatCompletion.create(
             model="gpt-4-turbo",
-            messages=[
-                {"role": "system", "content": PROMPT}
-            ] + active_calls[call_sid]
+            messages=[{"role": "system", "content": "PROMPT"}] + active_calls[call_sid]
         )
         
         respuesta = response_openai["choices"][0]["message"]["content"]
         active_calls[call_sid].append({"role": "assistant", "content": respuesta})
         
-        # Generar la respuesta en audio con OpenAI TTS
-        audio_file = generate_speech(respuesta)
-        
+        # Respuesta con Twilio TTS
         response = VoiceResponse()
-        if audio_file:
-            response.play(f"{request.host_url}static/{audio_file}")
-        else:
-            response.say(respuesta, voice='alice', language='es-MX')
-        
+        response.say(respuesta, voice='Polly.Sofia', language='es-MX')  # Twilio TTS en español
         response.gather(input="speech", action="/transcription", timeout=5, speechTimeout="auto", language="es-MX")
+        
         return str(response)
     
     except Exception as e:
-        error_msg = f"Error en la transcripción o procesamiento de la llamada: {str(e)}"
-        logging.error(error_msg)
-        
-        text = "Ha ocurrido un error. Por favor intenta de nuevo más tarde."
-        audio_file = generate_speech(text)
+        logging.error(f"Error en la transcripción o procesamiento de la llamada: {str(e)}")
         
         response = VoiceResponse()
-        if audio_file:
-            response.play(f"{request.host_url}static/{audio_file}")
-        else:
-            response.say(text, voice='alice', language='es-MX')
-        
+        response.say("Ha ocurrido un error. Por favor intenta de nuevo más tarde.", voice='Polly.Sofia', language='es-MX')
         return str(response)
 
-# Manejo de finalización de llamada
 @app.route("/end_call", methods=['POST'])
 def end_call():
+    """Elimina el contexto de la llamada cuando termina"""
     call_sid = request.form.get('CallSid', None)
     if call_sid and call_sid in active_calls:
         del active_calls[call_sid]
