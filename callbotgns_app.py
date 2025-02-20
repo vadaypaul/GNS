@@ -1,3 +1,37 @@
+import os
+import openai
+import logging
+from flask import Flask, request, jsonify
+from twilio.twiml.voice_response import VoiceResponse
+from flask_socketio import SocketIO
+
+app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Configuración de logging para registrar errores
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Configuración de variables de entorno
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
+
+openai.api_key = OPENAI_API_KEY
+
+# Almacenar el contexto de la conversación por llamada
+active_calls = {}
+
+@app.route("/voice", methods=['POST'])
+def voice():
+    """Inicio de la llamada con Twilio TTS"""
+    response = VoiceResponse()
+    response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?",
+                 voice='Polly.Sofia', language='es-MX')  # Usamos una voz más realista de Twilio Polly
+    
+    response.gather(input="speech", action="/transcription", timeout=5, speechTimeout="auto", language="es-MX")
+    return str(response)
+
 PROMPT = """Contexto y rol:
 Eres un asistente virtual de Barber Shop GNS especializado en recibir llamadas y agendar citas. Siempre que atiendes una llamada, el sistema emite un mensaje automático diciendo:
 
@@ -106,40 +140,6 @@ Siempre despídete indicando que el cliente puede colgar si no tiene dudas: "Si 
 Asegúrate de confirmar la cita en cuanto quede registrada: "Listo, tu cita ha sido agendada. Nos vemos pronto."
 
 """
-
-import os
-import openai
-import logging
-from flask import Flask, request, jsonify
-from twilio.twiml.voice_response import VoiceResponse
-from flask_socketio import SocketIO
-
-app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
-
-# Configuración de logging para registrar errores
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Configuración de variables de entorno
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
-
-openai.api_key = OPENAI_API_KEY
-
-# Almacenar el contexto de la conversación por llamada
-active_calls = {}
-
-@app.route("/voice", methods=['POST'])
-def voice():
-    """Inicio de la llamada con Twilio TTS"""
-    response = VoiceResponse()
-    response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?",
-                 voice='Polly.Sofia', language='es-MX')  # Usamos una voz más realista de Twilio Polly
-    
-    response.gather(input="speech", action="/transcription", timeout=5, speechTimeout="auto", language="es-MX")
-    return str(response)
 
 @app.route("/transcription", methods=['POST'])
 def transcription():
