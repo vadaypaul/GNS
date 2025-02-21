@@ -168,10 +168,6 @@ def voice():
     response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?", voice="Polly.Mia", language="es-MX")
     return str(response)
 
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))  # Usa el puerto asignado por Render
-    app.run(host="0.0.0.0", port=port, debug=True)
-
 active_calls = {}
 
 @app.route("/transcription", methods=['POST'])
@@ -295,9 +291,6 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 
 openai.api_key = OPENAI_API_KEY
-
-port = int(os.getenv("PORT", 5000))  # Usa el puerto de Render si está definido
-app.run(host="0.0.0.0", port=port, debug=True)
 
 if not OPENAI_API_KEY:
     logging.error("Falta la API key de OpenAI. Configura OPENAI_API_KEY.")
@@ -544,5 +537,5 @@ def confirmar_cita():
         }), 200
 
 if __name__ == "__main__":
-    port = int(os.getenv("5000"))  # Usa el puerto asignado por Render
-    app.run(host="0.0.0.0", port=port)
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port)  # ❌ Sin debug=True
