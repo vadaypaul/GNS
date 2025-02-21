@@ -398,33 +398,6 @@ def handle_exception(e):
     logging.error(f"Error interno: {str(e)}")
     return jsonify({"error": "Ocurrió un error interno. Inténtalo de nuevo más tarde."}), 500
 
-@app.route("/calendly_webhook", methods=['POST'])
-def calendly_webhook():
-    """Recibe eventos de Calendly y actualiza la información de las citas"""
-    try:
-        data = request.json  
-        if not data:
-            return jsonify({"error": "Payload vacío"}), 400
-
-        event_type = data.get("event") or data.get("event_type")  
-        if not event_type:
-            return jsonify({"error": "Falta el tipo de evento"}), 400
-
-        invitee = data.get("payload", {}).get("invitee", {})
-
-        if event_type == "invitee.created":
-            logging.info(f"Nueva cita agendada: {invitee}")
-        elif event_type == "invitee.canceled":
-            logging.info(f"Cita cancelada: {invitee}")
-        else:
-            logging.warning(f"Evento desconocido recibido: {event_type}")
-
-        return jsonify({"message": "Webhook recibido"}), 200
-    
-    except Exception as e:
-        logging.error(f"Error en el webhook: {str(e)}")
-        return jsonify({"error": "Error al procesar el webhook"}), 500
-
 @app.route("/transcription", methods=['POST'])
 def transcription():
     """Procesa la entrada del usuario, genera respuesta con OpenAI y la devuelve con Twilio TTS"""
