@@ -56,34 +56,22 @@ def obtener_disponibilidad():
         "Content-Type": "application/json"
     }
 
-    params = {
-        "user": CALENDLY_USER_URI,
-        "start_time": f"{START_DATE}T00:00:00.000Z",
-        "end_time": f"{END_DATE}T23:59:59.999Z"
-    }
-
     disponibilidad = []
-    url = f"{BASE_URL}/scheduled_events"
+    url = f"{BASE_URL}/event_types/{CALENDLY_USER_URI}/availability"
 
-    while url:
-        try:
-            response = requests.get(url, headers=headers, params=params, timeout=10)
-            response.raise_for_status()  # Lanza error si la respuesta no es 200
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
 
-            data = response.json()
-            eventos = data.get("collection", [])
+        data = response.json()
+        time_slots = data.get("collection", [])
 
-            for evento in eventos:
-                start_time = evento.get("start_time")
-                if start_time:
-                    disponibilidad.append(start_time)
+        for slot in time_slots:
+            disponibilidad.append(slot["start_time"])  
 
-            # Manejo de paginación
-            url = data.get("pagination", {}).get("next_page", None)
-
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Error al obtener disponibilidad de Calendly: {e}")
-            return None
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error al obtener disponibilidad de Calendly: {e}")
+        return None
 
     if disponibilidad:
         logging.info(f"Horarios disponibles obtenidos: {len(disponibilidad)} citas disponibles.")
@@ -343,14 +331,26 @@ def agendar_cita():
             "Content-Type": "application/json"
         }
 
-        response = requests.post("https://api.calendly.com/scheduled_events", headers=headers, json=infodelacita)
+        payload = {
+            "event_type": CALENDLY_USER_URI,
+            "start_time": infodelacita.get("start_time"),
+            "invitees": [
+                {
+                    "email": infodelacita.get("email"),
+                    "first_name": infodelacita.get("nombre"),
+                    "timezone": "America/Mexico_City"
+                }
+            ]
+        }
+
+        response = requests.post(f"{BASE_URL}/event_type/{CALENDLY_USER_URI}/scheduling_links", headers=headers, json=payload)
 
         if response.status_code == 201:
             calendly_response = response.json()
             infodelacita["calendly_response"] = calendly_response  
-            return jsonify({"message": "Cita agendada con éxito", "response": calendly_response}), 201
+            return jsonify({"message": "✅ Cita agendada con éxito", "response": calendly_response}), 201
         else:
-            return jsonify({"error": "Error al agendar la cita en Calendly", "details": response.json()}), 400
+            return jsonify({"error": "❌ Error al agendar la cita en Calendly", "details": response.json()}), 400
 
 @app.route("/confirmar_cita", methods=['GET'])
 def confirmar_cita():
