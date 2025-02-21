@@ -7,7 +7,7 @@ from callbotgns_app import app
 # Configuración de logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-@app.route("/voice", methods=['POST'])
+@app.route("/voice", methods=['GET', 'POST'])
 def voice():
     """Inicio de la llamada con Twilio TTS"""
     response = VoiceResponse()
