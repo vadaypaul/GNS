@@ -164,12 +164,13 @@ def calendly_webhook():
 
 @app.route("/voice", methods=['POST'])
 def voice():
-    """Inicio de la llamada con Twilio TTS"""
     response = VoiceResponse()
     response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?", voice="Polly.Mia", language="es-MX")
-    
-    gather = response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
     return str(response)
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5000))  # Usa el puerto asignado por Render
+    app.run(host="0.0.0.0", port=port, debug=True)
 
 active_calls = {}
 
