@@ -441,17 +441,6 @@ def calendly_webhook():
         logging.error(f"Error en el webhook: {str(e)}")
         return jsonify({"error": "Error al procesar el webhook"}), 500
 
-@app.route("/voice", methods=['POST'])
-def voice():
-    """Inicio de la llamada con Twilio TTS"""
-    response = VoiceResponse()
-    response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?", voice="Polly.Mia", language="es-MX")
-    
-    gather = response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
-    return str(response)
-
-active_calls = {}
-
 @app.route("/transcription", methods=['POST'])
 def transcription():
     """Procesa la entrada del usuario, genera respuesta con OpenAI y la devuelve con Twilio TTS"""
