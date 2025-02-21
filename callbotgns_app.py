@@ -165,7 +165,22 @@ def calendly_webhook():
 @app.route("/voice", methods=['GET', 'POST'])
 def voice():
     response = VoiceResponse()
+    
+    # Mensaje inicial
     response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?", voice="Polly.Mia", language="es-MX")
+    
+    # Agregar Gather para recibir entrada del usuario
+    gather = response.gather(
+        input="speech",
+        action="/transcription",
+        timeout=8,
+        speechTimeout="auto",
+        language="es-MX"
+    )
+    
+    # Mensaje en caso de que no responda nada
+    response.say("No te escuché, ¿puedes repetirlo?", voice="Polly.Mia", language="es-MX")
+    
     return str(response)
 
 active_calls = {}
