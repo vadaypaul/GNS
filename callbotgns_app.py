@@ -554,5 +554,5 @@ def confirmar_cita():
         }), 200
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))  # Usa el puerto que Render asigna
+    port = int(os.getenv("PORT", 10000))  # Cambia el puerto por 10000
     app.run(host="0.0.0.0", port=port, debug=True)
