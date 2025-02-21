@@ -169,15 +169,14 @@ def voice():
     # Mensaje inicial
     response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?", voice="Polly.Mia", language="es-MX")
     
-    # Agregar `speechTimeout="auto"` y `timeout=5` en gather
+    # Agregar Gather para recibir entrada del usuario
     gather = response.gather(
-    input="speech",
-    action="/transcription",
-    timeout=5,  # Reducido para respuesta más rápida
-    speechTimeout="auto",  # Permite que Twilio detecte cuándo el usuario terminó de hablar
-    language="es-MX"
-)
-
+        input="speech",
+        action="/transcription",
+        timeout=8,
+        speechTimeout="auto",
+        language="es-MX"
+    )
     
     # Mensaje en caso de que no responda nada
     response.say("No te escuché, ¿puedes repetirlo?", voice="Polly.Mia", language="es-MX")
@@ -193,9 +192,8 @@ def transcription():
         call_sid = request.form.get('CallSid', None)
         user_input = request.form.get('SpeechResult', None)
 
-        # Agregar logs para depuración
         logging.debug(f"CallSid recibido: {call_sid}")
-        logging.debug(f"Texto reconocido por Twilio: {user_input}")
+        logging.debug(f"Usuario dijo: {user_input}")
 
         if not call_sid:
             logging.error("CallSid no recibido en la petición.")
