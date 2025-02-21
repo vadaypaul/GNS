@@ -162,7 +162,7 @@ def calendly_webhook():
         logging.error(f"Error en el webhook: {str(e)}")
         return jsonify({"error": "Error al procesar el webhook"}), 500
 
-@app.route("/voice", methods=['POST'])
+@app.route("/voice", methods=['GET', 'POST'])
 def voice():
     response = VoiceResponse()
     response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?", voice="Polly.Mia", language="es-MX")
@@ -270,16 +270,6 @@ def confirmar_cita():
             "fecha": start_time,
             "correo": email
         }), 200
-
-import os
-import openai
-import logging
-from flask import Flask, request, jsonify
-from twilio.twiml.voice_response import VoiceResponse
-import threading
-import requests
-
-app = Flask(__name__)
 
 # Configuración de logging para registrar errores
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -537,5 +527,5 @@ def confirmar_cita():
         }), 200
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "5000"))
-    app.run(host="0.0.0.0", port=port)  # ❌ Sin debug=True
+    port = int(os.getenv("PORT", "5000"))  
+    app.run(host="0.0.0.0", port=port)
