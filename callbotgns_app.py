@@ -23,6 +23,11 @@ if not OPENAI_API_KEY:
     logging.error("Falta la API key de OpenAI. Configura OPENAI_API_KEY.")
     exit(1)
 
+@app.route("/", methods=['GET'])
+def home():
+    return jsonify({"message": "Servicio activo"}), 200
+
+
 PROMPT = """Contexto y rol:
 Eres un asistente virtual de Barber Shop GNS especializado en recibir llamadas y agendar citas. Siempre que atiendes una llamada, el sistema emite un mensaje automático diciendo:
 
