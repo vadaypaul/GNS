@@ -192,6 +192,9 @@ def transcription():
         call_sid = request.form.get('CallSid', None)
         user_input = request.form.get('SpeechResult', None)
 
+        logging.debug(f"CallSid recibido: {call_sid}")
+        logging.debug(f"Usuario dijo: {user_input}")
+
         if not call_sid:
             logging.error("CallSid no recibido en la petición.")
             return jsonify({"error": "Falta CallSid"}), 400
@@ -200,17 +203,21 @@ def transcription():
             logging.warning(f"No se recibió transcripción para la llamada {call_sid}")
             response = VoiceResponse()
             response.say("Lo siento, no entendí. ¿Puedes repetirlo?", voice="Polly.Mia", language="es-MX")
-            response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
+            gather = response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
             return str(response)
 
+        # Guardar contexto de la conversación
         if call_sid not in active_calls:
             active_calls[call_sid] = []
+
         active_calls[call_sid].append({"role": "user", "content": user_input})
 
         response_openai = openai.ChatCompletion.create(
             model="gpt-4-turbo",
             messages=[{"role": "system", "content": PROMPT}] + active_calls[call_sid]
         )
+
+        logging.debug(f"Respuesta de OpenAI: {response_openai}")
 
         if "choices" in response_openai and response_openai["choices"]:
             respuesta = response_openai["choices"][0]["message"]["content"]
@@ -219,8 +226,11 @@ def transcription():
 
         active_calls[call_sid].append({"role": "assistant", "content": respuesta})
 
+        # Respuesta de Twilio
         response = VoiceResponse()
         response.say(respuesta, voice="Polly.Mia", language="es-MX")
+        
+        # Agregar `gather()` para esperar respuesta del usuario
         response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
 
         return str(response)
@@ -230,7 +240,7 @@ def transcription():
         response = VoiceResponse()
         response.say("Ha ocurrido un error. Por favor intenta de nuevo más tarde.", voice="Polly.Mia", language="es-MX")
         return str(response)
-
+    
 infodelacita = {}
 cita_lock = threading.Lock()
 
