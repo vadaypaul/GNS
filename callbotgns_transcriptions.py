@@ -22,7 +22,7 @@ def transcription():
         if not user_input:
             logging.warning(f"No se recibió transcripción para la llamada {call_sid}")
             response = VoiceResponse()
-            response.say("Lo siento, no entendí. ¿Puedes repetirlo?", voice="Polly.Lupe", language="es-MX")
+            response.say("Lo siento, no entendí. ¿Puedes repetirlo?", voice="Polly.Mia", language="es-MX")
             response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
             return str(response)
 
@@ -42,7 +42,7 @@ def transcription():
 
         # Respuesta con Twilio TTS usando Polly
         response = VoiceResponse()
-        response.say(respuesta, voice="Polly.Lupe", language="es-MX")
+        response.say(respuesta, voice="Polly.Mia", language="es-MX")
         response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
 
         return str(response)
@@ -51,7 +51,7 @@ def transcription():
         logging.error(f"Error en la transcripción o procesamiento de la llamada: {str(e)}")
 
         response = VoiceResponse()
-        response.say("Ha ocurrido un error. Por favor intenta de nuevo más tarde.", voice="Polly.Lupe", language="es-MX")
+        response.say("Ha ocurrido un error. Por favor intenta de nuevo más tarde.", voice="Polly.Mia", language="es-MX")
         return str(response)
 
 PROMPT = """Contexto y rol:
