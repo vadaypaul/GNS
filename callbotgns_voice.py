@@ -13,7 +13,7 @@ def voice():
     response = VoiceResponse()
     response.say(
         "Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?",
-        voice="Polly.Lupe",  # Cambia a una voz hiperrealista de Amazon Polly
+        voice="Polly.Mia",  # Cambia a una voz hiperrealista de Amazon Polly
         language="es-MX"
     )
     response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
