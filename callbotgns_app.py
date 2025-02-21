@@ -5,6 +5,7 @@ from flask import Flask, request, jsonify
 from twilio.twiml.voice_response import VoiceResponse
 import threading
 import requests
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -27,6 +28,72 @@ if not OPENAI_API_KEY:
 def home():
     return jsonify({"message": "Servicio activo"}), 200
 
+# Configurar logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# Variables de entorno
+CALENDLY_API_KEY = os.getenv("CALENDLY_API_KEY")
+CALENDLY_USER_URI = os.getenv("CALENDLY_USER_URI")  # Requiere el URI del usuario o del evento
+
+# URL base de la API de Calendly
+BASE_URL = "https://api.calendly.com"
+
+# Obtener fecha actual y dentro de 14 días
+START_DATE = datetime.utcnow().date()
+END_DATE = START_DATE + timedelta(days=14)
+
+def obtener_disponibilidad():
+    """
+    Consulta la API de Calendly para obtener los horarios disponibles en los próximos 14 días.
+    Maneja errores, reintentos y paginación para asegurar una respuesta completa.
+    """
+    if not CALENDLY_API_KEY or not CALENDLY_USER_URI:
+        logging.error("Faltan las variables de entorno CALENDLY_API_KEY o CALENDLY_USER_URI.")
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {CALENDLY_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    params = {
+        "user": CALENDLY_USER_URI,
+        "start_time": f"{START_DATE}T00:00:00.000Z",
+        "end_time": f"{END_DATE}T23:59:59.999Z"
+    }
+
+    disponibilidad = []
+    url = f"{BASE_URL}/scheduled_events"
+
+    while url:
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=10)
+            response.raise_for_status()  # Lanza error si la respuesta no es 200
+
+            data = response.json()
+            eventos = data.get("collection", [])
+
+            for evento in eventos:
+                start_time = evento.get("start_time")
+                if start_time:
+                    disponibilidad.append(start_time)
+
+            # Manejo de paginación
+            url = data.get("pagination", {}).get("next_page", None)
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error al obtener disponibilidad de Calendly: {e}")
+            return None
+
+    if disponibilidad:
+        logging.info(f"Horarios disponibles obtenidos: {len(disponibilidad)} citas disponibles.")
+    else:
+        logging.warning("No se encontraron horarios disponibles en Calendly.")
+
+    return disponibilidad
+
+# Ejecutar la función y almacenar los horarios disponibles
+disponibilidad_citas = obtener_disponibilidad()
 
 PROMPT = """Contexto y rol:
 Eres un asistente virtual de Barber Shop GNS especializado en recibir llamadas y agendar citas. Siempre que atiendes una llamada, el sistema emite un mensaje automático diciendo:
@@ -37,7 +104,7 @@ Luego, continúa la conversación de forma fluida sin repetir información innec
 
 Flujo principal: Agendar una cita
 
-Si el cliente quiere una cita, sigue este proceso:
+Si el cliente quiere una cita, revisa la disponibilidad aqui: "{disponibilidad_citas}", y sigue este proceso:
 
 Fecha y hora:
 
