@@ -227,132 +227,107 @@ def voice():
     response = VoiceResponse()
     
     # Mensaje inicial
-    response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?", voice="Polly.Mia", language="es-MX")
+    response.say("Hola, bienvenido a BarberShop GNS, ¿gustas agendar una cita o requieres otro tipo de información?", 
+                 voice="Polly.Mia", language="es-MX", neural=True)
     
-    # Agregar Gather para recibir entrada del usuario
+    # Gather optimizado con detección mejorada, menor espera y más sensibilidad
     gather = response.gather(
         input="speech",
         action="/transcription",
-        timeout=8,
-        speechTimeout="auto",
-        language="es-MX"
+        timeout=5,  # Respuesta más rápida si no hay interacción
+        speechTimeout="0.5s",  # Espera solo 1 segundo después de que el usuario deja de hablar
+        language="es-MX",
+        enhanced=True,  # Activa el modelo avanzado de reconocimiento de voz
+        model="phone_call"  # Optimizado para llamadas telefónicas
     )
-    
-    # Mensaje en caso de que no responda nada
-    response.say("No te escuché, ¿puedes repetirlo?", voice="Polly.Mia", language="es-MX")
-    
+
+    response.append(gather)
+
+    # Mensaje en caso de que no haya respuesta
+    response.say("No te escuché, ¿puedes repetirlo?", voice="Polly.Mia", language="es-MX", neural=True)
+
     return str(response)
 
 active_calls = {}
 
 @app.route("/transcription", methods=['POST'])
 def transcription():
-    """Procesa la entrada del usuario, verifica si ya tiene todos los datos para la cita y responde con GPT"""
+    """Procesa la entrada del usuario, genera respuesta con OpenAI y la devuelve con Twilio TTS"""
     try:
         call_sid = request.form.get('CallSid', None)
         user_input = request.form.get('SpeechResult', None)
 
+        # Logs detallados para depuración
         logging.debug(f"CallSid recibido: {call_sid}")
-        logging.debug(f"Usuario dijo: {user_input}")
+        logging.debug(f"Texto reconocido por Twilio: {user_input}")
 
+        # Validar si se recibió CallSid
         if not call_sid:
             logging.error("CallSid no recibido en la petición.")
             return jsonify({"error": "Falta CallSid"}), 400
 
+        response = VoiceResponse()
+
+        # Si no hay texto reconocido, pedir repetición con `gather()`
         if not user_input:
             logging.warning(f"No se recibió transcripción para la llamada {call_sid}")
-            response = VoiceResponse()
-            response.say("Lo siento, no entendí. ¿Puedes repetirlo?", voice="Polly.Mia", language="es-MX")
-            gather = response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
+            response.say("Lo siento, no entendí. ¿Puedes repetirlo?", voice="Polly.Mia", language="es-MX", neural=True)
+            gather = response.gather(
+                input="speech",
+                action="/transcription",
+                timeout=5,  # Responde más rápido si no hay interacción
+                speechTimeout="1s",  # Espera solo 1 segundo de silencio antes de asumir que terminó de hablar
+                language="es-MX",
+                enhanced=True,
+                model="phone_call"
+            )
+            response.append(gather)
             return str(response)
 
-        # Guardar el contexto de la conversación
+        # Guardar contexto de la conversación
         if call_sid not in active_calls:
             active_calls[call_sid] = []
 
         active_calls[call_sid].append({"role": "user", "content": user_input})
 
-        # 🔹 PRIMERA CONSULTA: ¿Ya se tienen los 6 datos?
-        prompt_verificacion = f"""
-        Aquí está la conversación hasta ahora en formato JSON:
+        # Llamar a OpenAI con mensajes acumulados
+        try:
+            response_openai = openai.ChatCompletion.create(
+                model="gpt-4-turbo",
+                messages=[{"role": "system", "content": PROMPT}] + active_calls[call_sid]
+            )
 
-        {json.dumps(active_calls[call_sid], ensure_ascii=False, indent=2)}
-
-        Identifica si en la conversación ya se tienen estos 6 datos:
-        1. Nombre del cliente
-        2. Número de teléfono
-        3. Día de la cita
-        4. Hora de la cita
-        5. Servicio (solo corte o corte + barba)
-        6. Barbero (específico o cualquiera disponible)
-
-        Si falta alguno, responde solo con "INCOMPLETO". 
-        Si están todos, responde con un JSON en este formato para agendar en Calendly:
-
-        {{
-            "event_type": "<URI_DEL_EVENTO_CALENDLY>",
-            "start_time": "<YYYY-MM-DDTHH:MM:SSZ>",
-            "invitees": [
-                {{
-                    "email": "cliente@example.com",
-                    "first_name": "<NOMBRE_DEL_CLIENTE>",
-                    "timezone": "America/Mexico_City"
-                }}
-            ],
-            "custom_fields": [
-                {{"name": "Teléfono", "value": "<NUMERO>"}},
-                {{"name": "Servicio", "value": "<CORTE_O_BARBA>"}},
-                {{"name": "Barbero", "value": "<BARBERO>"}}
-            ]
-        }}
-        """
-
-        response_verificacion = openai.ChatCompletion.create(
-            model="gpt-4-turbo",
-            messages=[{"role": "system", "content": prompt_verificacion}]
-        )
-
-        gpt_respuesta = response_verificacion["choices"][0]["message"]["content"].strip()
-
-        logging.debug(f"GPT Respuesta Verificación: {gpt_respuesta}")
-
-        # Si la respuesta es un JSON válido, guardarlo en infodelacita
-        if gpt_respuesta != "INCOMPLETO":
-            try:
-                infodelacita[call_sid] = json.loads(gpt_respuesta)
-                logging.info(f"Datos de cita completados y guardados: {infodelacita[call_sid]}")
-            except json.JSONDecodeError:
-                logging.error("Error al interpretar la respuesta de GPT como JSON.")
-                infodelacita[call_sid] = {}
-
-        # 🔹 SEGUNDA CONSULTA: Continuar con la conversación normal
-        response_openai = openai.ChatCompletion.create(
-            model="gpt-4-turbo",
-            messages=[{"role": "system", "content": PROMPT}] + active_calls[call_sid]
-        )
-
-        logging.debug(f"Respuesta de OpenAI: {response_openai}")
-
-        if "choices" in response_openai and response_openai["choices"]:
             respuesta = response_openai["choices"][0]["message"]["content"]
-        else:
+            logging.debug("Respuesta de OpenAI recibida correctamente.")
+
+        except Exception as e:
+            logging.error(f"Error en la consulta a OpenAI: {str(e)}")
             respuesta = "Lo siento, no pude procesar tu solicitud en este momento."
 
+        # Guardar respuesta de OpenAI en el contexto
         active_calls[call_sid].append({"role": "assistant", "content": respuesta})
 
-        # Respuesta de Twilio
-        response = VoiceResponse()
-        response.say(respuesta, voice="Polly.Mia", language="es-MX")
-        
+        # Responder al usuario
+        response.say(respuesta, voice="Polly.Mia", language="es-MX", neural=True)
+
         # Agregar `gather()` para esperar respuesta del usuario
-        response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
+        gather = response.gather(
+            input="speech",
+            action="/transcription",
+            timeout=5,  # Tiempo reducido para respuestas rápidas
+            speechTimeout="0.5s",  # No espera demasiado para asumir que terminó de hablar
+            language="es-MX",
+            enhanced=True,
+            model="phone_call"
+        )
+        response.append(gather)
 
         return str(response)
 
     except Exception as e:
         logging.error(f"Error en la transcripción o procesamiento de la llamada: {str(e)}")
         response = VoiceResponse()
-        response.say("Ha ocurrido un error. Por favor intenta de nuevo más tarde.", voice="Polly.Mia", language="es-MX")
+        response.say("Ha ocurrido un error. Por favor intenta de nuevo más tarde.", voice="Polly.Mia", language="es-MX", neural=True)
         return str(response)
     
 infodelacita = {}
