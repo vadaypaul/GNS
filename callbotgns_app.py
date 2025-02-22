@@ -5,7 +5,6 @@ from flask import Flask, request, jsonify
 from twilio.twiml.voice_response import VoiceResponse
 import threading
 import requests
-from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -24,65 +23,6 @@ if not OPENAI_API_KEY:
     logging.error("Falta la API key de OpenAI. Configura OPENAI_API_KEY.")
     exit(1)
 
-@app.route("/", methods=['GET'])
-def home():
-    return jsonify({"message": "Servicio activo"}), 200
-
-# Configurar logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-# Variables de entorno
-CALENDLY_API_KEY = os.getenv("CALENDLY_API_KEY")
-CALENDLY_USER_URI = os.getenv("CALENDLY_USER_URI")  # Requiere el URI del usuario o del evento
-
-# URL base de la API de Calendly
-BASE_URL = "https://api.calendly.com"
-
-# Obtener fecha actual y dentro de 14 días
-START_DATE = datetime.utcnow().date()
-END_DATE = START_DATE + timedelta(days=14)
-
-def obtener_disponibilidad():
-    """
-    Consulta la API de Calendly para obtener los horarios disponibles en los próximos 14 días.
-    Maneja errores, reintentos y paginación para asegurar una respuesta completa.
-    """
-    if not CALENDLY_API_KEY or not CALENDLY_USER_URI:
-        logging.error("Faltan las variables de entorno CALENDLY_API_KEY o CALENDLY_USER_URI.")
-        return None
-
-    headers = {
-        "Authorization": f"Bearer {CALENDLY_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    disponibilidad = []
-    url = f"{BASE_URL}/event_types/{CALENDLY_USER_URI}/availability"
-
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-
-        data = response.json()
-        time_slots = data.get("collection", [])
-
-        for slot in time_slots:
-            disponibilidad.append(slot["start_time"])  
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error al obtener disponibilidad de Calendly: {e}")
-        return None
-
-    if disponibilidad:
-        logging.info(f"Horarios disponibles obtenidos: {len(disponibilidad)} citas disponibles.")
-    else:
-        logging.warning("No se encontraron horarios disponibles en Calendly.")
-
-    return disponibilidad
-
-# Ejecutar la función y almacenar los horarios disponibles
-disponibilidad_citas = obtener_disponibilidad()
-
 PROMPT = """Contexto y rol:
 Eres un asistente virtual de Barber Shop GNS especializado en recibir llamadas y agendar citas. Siempre que atiendes una llamada, el sistema emite un mensaje automático diciendo:
 
@@ -92,7 +32,7 @@ Luego, continúa la conversación de forma fluida sin repetir información innec
 
 Flujo principal: Agendar una cita
 
-Si el cliente quiere una cita, revisa la disponibilidad aqui: "{disponibilidad_citas}", y sigue este proceso:
+Si el cliente quiere una cita, sigue este proceso:
 
 Fecha y hora:
 
@@ -248,6 +188,7 @@ def voice():
 
     return str(response)
 
+
 active_calls = {}
 
 @app.route("/transcription", methods=['POST'])
@@ -360,26 +301,14 @@ def agendar_cita():
             "Content-Type": "application/json"
         }
 
-        payload = {
-            "event_type": CALENDLY_USER_URI,
-            "start_time": infodelacita.get("start_time"),
-            "invitees": [
-                {
-                    "email": infodelacita.get("email"),
-                    "first_name": infodelacita.get("nombre"),
-                    "timezone": "America/Mexico_City"
-                }
-            ]
-        }
-
-        response = requests.post(f"{BASE_URL}/event_type/{CALENDLY_USER_URI}/scheduling_links", headers=headers, json=payload)
+        response = requests.post("https://api.calendly.com/scheduled_events", headers=headers, json=infodelacita)
 
         if response.status_code == 201:
             calendly_response = response.json()
             infodelacita["calendly_response"] = calendly_response  
-            return jsonify({"message": "✅ Cita agendada con éxito", "response": calendly_response}), 201
+            return jsonify({"message": "Cita agendada con éxito", "response": calendly_response}), 201
         else:
-            return jsonify({"error": "❌ Error al agendar la cita en Calendly", "details": response.json()}), 400
+            return jsonify({"error": "Error al agendar la cita en Calendly", "details": response.json()}), 400
 
 @app.route("/confirmar_cita", methods=['GET'])
 def confirmar_cita():
