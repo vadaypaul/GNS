@@ -247,7 +247,7 @@ active_calls = {}
 
 @app.route("/transcription", methods=['POST'])
 def transcription():
-    """Procesa la entrada del usuario, genera respuesta con OpenAI y la devuelve con Twilio TTS"""
+    """Procesa la entrada del usuario, verifica si ya tiene todos los datos para la cita y responde con GPT"""
     try:
         call_sid = request.form.get('CallSid', None)
         user_input = request.form.get('SpeechResult', None)
@@ -266,12 +266,66 @@ def transcription():
             gather = response.gather(input="speech", action="/transcription", timeout=8, speechTimeout="auto", language="es-MX")
             return str(response)
 
-        # Guardar contexto de la conversación
+        # Guardar el contexto de la conversación
         if call_sid not in active_calls:
             active_calls[call_sid] = []
 
         active_calls[call_sid].append({"role": "user", "content": user_input})
 
+        # 🔹 PRIMERA CONSULTA: ¿Ya se tienen los 6 datos?
+        prompt_verificacion = f"""
+        Aquí está la conversación hasta ahora en formato JSON:
+
+        {json.dumps(active_calls[call_sid], ensure_ascii=False, indent=2)}
+
+        Identifica si en la conversación ya se tienen estos 6 datos:
+        1. Nombre del cliente
+        2. Número de teléfono
+        3. Día de la cita
+        4. Hora de la cita
+        5. Servicio (solo corte o corte + barba)
+        6. Barbero (específico o cualquiera disponible)
+
+        Si falta alguno, responde solo con "INCOMPLETO". 
+        Si están todos, responde con un JSON en este formato para agendar en Calendly:
+
+        {{
+            "event_type": "<URI_DEL_EVENTO_CALENDLY>",
+            "start_time": "<YYYY-MM-DDTHH:MM:SSZ>",
+            "invitees": [
+                {{
+                    "email": "cliente@example.com",
+                    "first_name": "<NOMBRE_DEL_CLIENTE>",
+                    "timezone": "America/Mexico_City"
+                }}
+            ],
+            "custom_fields": [
+                {{"name": "Teléfono", "value": "<NUMERO>"}},
+                {{"name": "Servicio", "value": "<CORTE_O_BARBA>"}},
+                {{"name": "Barbero", "value": "<BARBERO>"}}
+            ]
+        }}
+        """
+
+        response_verificacion = openai.ChatCompletion.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "system", "content": prompt_verificacion}]
+        )
+
+        gpt_respuesta = response_verificacion["choices"][0]["message"]["content"].strip()
+
+        logging.debug(f"GPT Respuesta Verificación: {gpt_respuesta}")
+
+        # Si la respuesta es un JSON válido, guardarlo en infodelacita
+        if gpt_respuesta != "INCOMPLETO":
+            try:
+                infodelacita[call_sid] = json.loads(gpt_respuesta)
+                logging.info(f"Datos de cita completados y guardados: {infodelacita[call_sid]}")
+            except json.JSONDecodeError:
+                logging.error("Error al interpretar la respuesta de GPT como JSON.")
+                infodelacita[call_sid] = {}
+
+        # 🔹 SEGUNDA CONSULTA: Continuar con la conversación normal
         response_openai = openai.ChatCompletion.create(
             model="gpt-4-turbo",
             messages=[{"role": "system", "content": PROMPT}] + active_calls[call_sid]
