@@ -220,7 +220,7 @@ def transcription():
                 speechTimeout="1s",  # Espera solo 1 segundo de silencio antes de asumir que terminó de hablar
                 language="es-MX",
                 enhanced=True,
-                model="phone_call"
+                model="default"
             )
             response.append(gather)
             return str(response)
@@ -259,7 +259,7 @@ def transcription():
             speechTimeout="0.5s",  # No espera demasiado para asumir que terminó de hablar
             language="es-MX",
             enhanced=True,
-            model="phone_call"
+            model="default"
         )
         response.append(gather)
 
