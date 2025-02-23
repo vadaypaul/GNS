@@ -38,7 +38,8 @@ def llamar(nombre, numero):
     mensaje_fijo_url = f"{RENDER_URL}/mercedes_fijo.mp3"  # 🔴 Ahora usa la URL correcta en Render
 
     call = client.calls.create(
-        twiml = f"""<Response>
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
             <Pause length="1"/>
             <Play>{saludo_url}</Play>
             <Pause length="1"/>
