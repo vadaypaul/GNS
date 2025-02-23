@@ -40,6 +40,7 @@ def llamar(nombre, numero):
     call = client.calls.create(
         twiml=f'''
         <Response>
+            <Pause length="1"/>  
             <Play>{saludo_url}</Play>
             <Play>{mensaje_fijo_url}</Play>
             <Play>{despedida_url}</Play>
