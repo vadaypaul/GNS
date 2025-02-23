@@ -38,31 +38,28 @@ def llamar(nombre, numero):
     despedida_url = f"{RENDER_URL}/audio?nombre={nombre}&tipo=despedida"
     mensaje_fijo_url = f"{RENDER_URL}/mercedes_fijo.mp3"
 
-    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-    <Response>
-        <Pause length="1"/>
-        <Play>{saludo_url}</Play>
-        <Pause length="1"/>
-        <Play>{mensaje_fijo_url}</Play>
-        <Pause length="1"/>
-        <Play>{despedida_url}</Play>
-    </Response>"""
+    # Crear estructura XML TwiML de forma segura
+    response = ET.Element("Response")
 
-    # Validar XML antes de enviarlo a Twilio para evitar errores de parseo
-    try:
-        ET.fromstring(twiml)  # Si hay un error en el XML, lo detectará aquí
-    except ET.ParseError as e:
-        print(f"Error en el XML de TwiML: {e}")
-        return
+    ET.SubElement(response, "Pause", length="1")
+    ET.SubElement(response, "Play").text = saludo_url
+    ET.SubElement(response, "Pause", length="1")
+    ET.SubElement(response, "Play").text = mensaje_fijo_url
+    ET.SubElement(response, "Pause", length="1")
+    ET.SubElement(response, "Play").text = despedida_url
 
+    # Convertir XML a string válido
+    twiml_str = ET.tostring(response, encoding="utf-8").decode()
+
+    # Llamar con Twilio usando el TwiML corregido
     call = client.calls.create(
-        twiml=twiml,
+        twiml=twiml_str,
         to=numero,
         from_=TWILIO_NUMBER
     )
 
     print(f"Llamada programada a {nombre} ({numero}) - SID: {call.sid}")
-
+    
 def ejecutar_llamadas():
     contactos = obtener_grupo_diario()
     if not contactos:
