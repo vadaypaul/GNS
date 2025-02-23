@@ -11,8 +11,7 @@ TWILIO_AUTH = os.getenv("TWILIO_AUTH")
 TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 RENDER_URL = "https://gns-yxfi.onrender.com"
 
-# 📌 AQUÍ PONES LA FECHA MANUALMENTE (Formato: "YYYY-MM-DD")
-START_DATE = "2025-02-23"  # 🔴 Cambia esto por la fecha de inicio real
+START_DATE = "2025-02-23"  # 🔴 Ajusta manualmente la fecha de inicio
 
 def obtener_dia_de_ejecucion():
     hoy = datetime.date.today()
@@ -37,9 +36,19 @@ def obtener_grupo_diario():
 
 def llamar(nombre, numero):
     client = Client(TWILIO_SID, TWILIO_AUTH)
-    audio_url = f"{RENDER_URL}?nombre={nombre}"
+
+    saludo_url = f"{RENDER_URL}/audio?nombre={nombre}&tipo=saludo"
+    despedida_url = f"{RENDER_URL}/audio?nombre={nombre}&tipo=despedida"
+    mensaje_fijo_url = "https://gns-yxfi.onrender.com/mercedes_fijo.mp3"  # 🔴 Aquí va el audio con "Soy el dueño..."
+
     call = client.calls.create(
-        twiml=f'<Response><Play>{audio_url}</Play></Response>',
+        twiml=f'''
+        <Response>
+            <Play>{saludo_url}</Play>
+            <Play>{mensaje_fijo_url}</Play>
+            <Play>{despedida_url}</Play>
+        </Response>
+        ''',
         to=numero,
         from_=TWILIO_NUMBER
     )
