@@ -37,9 +37,9 @@ def serve_audio():
     audio = generar_audio(texto)
     return Response(audio, mimetype="audio/mpeg") if audio else ("Error generando audio", 500)
 
-@app.route('/mensaje-fijo.mp3')
-def serve_mensaje_fijo():
-    return send_file("mensaje-fijo.mp3", mimetype="audio/mpeg")
+@app.route('/mercedes_fijo.mp3')
+def serve_mercedes_fijo():
+    return send_file("mercedes_fijo.mp3", mimetype="audio/mpeg")
 
 @app.route('/run', methods=['POST'])
 def run_voice_script():
