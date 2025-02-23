@@ -3,6 +3,7 @@ import csv
 import datetime
 from twilio.rest import Client
 from dotenv import load_dotenv
+import xml.etree.ElementTree as ET
 
 load_dotenv()
 
@@ -35,22 +36,31 @@ def llamar(nombre, numero):
 
     saludo_url = f"{RENDER_URL}/audio?nombre={nombre}&tipo=saludo"
     despedida_url = f"{RENDER_URL}/audio?nombre={nombre}&tipo=despedida"
-    mensaje_fijo_url = f"{RENDER_URL}/mercedes_fijo.mp3"  # 🔴 Ahora usa la URL correcta en Render
+    mensaje_fijo_url = f"{RENDER_URL}/mercedes_fijo.mp3"
+
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+    <Response>
+        <Pause length="1"/>
+        <Play>{saludo_url}</Play>
+        <Pause length="1"/>
+        <Play>{mensaje_fijo_url}</Play>
+        <Pause length="1"/>
+        <Play>{despedida_url}</Play>
+    </Response>"""
+
+    # Validar XML antes de enviarlo a Twilio para evitar errores de parseo
+    try:
+        ET.fromstring(twiml)  # Si hay un error en el XML, lo detectará aquí
+    except ET.ParseError as e:
+        print(f"Error en el XML de TwiML: {e}")
+        return
 
     call = client.calls.create(
-        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-        <Response>
-            <Pause length="1"/>
-            <Play>{saludo_url}</Play>
-            <Pause length="1"/>
-            <Play>{mensaje_fijo_url}</Play>
-            <Pause length="1"/>
-            <Play>{despedida_url}</Play>
-        </Response>""",
-
+        twiml=twiml,
         to=numero,
         from_=TWILIO_NUMBER
     )
+
     print(f"Llamada programada a {nombre} ({numero}) - SID: {call.sid}")
 
 def ejecutar_llamadas():
