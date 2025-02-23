@@ -16,7 +16,7 @@ def generar_audio(texto):
     response = requests.post(
         f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}",
         headers={"xi-api-key": ELEVEN_LABS_API_KEY, "Content-Type": "application/json"},
-        json={"text": texto, "model_id": "eleven_monolingual_v1"}
+        json={"text": texto, "model_id": "eleven_flash_v2.5"}
     )
     return response.content if response.status_code == 200 else None
 
