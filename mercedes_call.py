@@ -51,3 +51,7 @@ def run_voice_script():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
+@app.route('/mercedes_fijo.mp3')
+def serve_mercedes_fijo():
+    return send_file("mercedes_fijo.mp3", mimetype="audio/mpeg")
