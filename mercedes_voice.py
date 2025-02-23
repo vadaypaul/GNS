@@ -19,7 +19,7 @@ def obtener_dia_de_ejecucion():
     return (hoy - start_date).days
 
 def obtener_grupo_diario():
-    with open('dear_customers.csv', 'r') as file:
+    with open('mercedes_customer.csv', 'r') as file:
         reader = csv.reader(file)
         next(reader)  # Omitir encabezado
         contactos = list(reader)
