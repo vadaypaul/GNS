@@ -1,7 +1,0 @@
-Flask
-gunicorn
-requests
-twilio
-flask-socketio
-openai==0.28
-
