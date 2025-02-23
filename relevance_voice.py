@@ -12,7 +12,7 @@ TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 RENDER_URL = "https://tu-app.onrender.com/audio"
 
 def obtener_grupo_diario():
-    with open('dear_customers.csv', 'r') as file:
+    with open('dear_customer.csv', 'r') as file:
         reader = csv.reader(file)
         next(reader)
         contactos = list(reader)
