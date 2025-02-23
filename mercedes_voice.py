@@ -38,14 +38,15 @@ def llamar(nombre, numero):
     mensaje_fijo_url = f"{RENDER_URL}/mercedes_fijo.mp3"  # 🔴 Ahora usa la URL correcta en Render
 
     call = client.calls.create(
-        twiml=f'''
-        <Response>
-            <Pause length="1"/>  
+        twiml = f"""<Response>
+            <Pause length="1"/>
             <Play>{saludo_url}</Play>
+            <Pause length="1"/>
             <Play>{mensaje_fijo_url}</Play>
+            <Pause length="1"/>
             <Play>{despedida_url}</Play>
-        </Response>
-        ''',
+        </Response>""",
+
         to=numero,
         from_=TWILIO_NUMBER
     )
