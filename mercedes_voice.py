@@ -24,10 +24,6 @@ def obtener_grupo_diario():
         next(reader)  # Omitir encabezado
         contactos = list(reader)
 
-    #if datetime.datetime.today().weekday() == 6:  # 6 = Domingo (no llamar)
-        #print("Hoy es domingo, no se realizarán llamadas.")
-        #return []
-
     dia_de_ejecucion = obtener_dia_de_ejecucion()
     inicio = dia_de_ejecucion * 333
     fin = inicio + 333
