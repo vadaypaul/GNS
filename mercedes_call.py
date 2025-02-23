@@ -8,8 +8,8 @@ load_dotenv()
 
 app = Flask(__name__)
 
-ELEVEN_LABS_API_KEY = os.getenv("ELEVEN_LABS_API_KEY")
-VOICE_ID = os.getenv("VOICE_ID")
+ELEVEN_LABS_API_KEY = "sk_e51ca130310943702f1b4c60d8f3323698f193e416ecb94e"
+VOICE_ID = "mzzfwTyWmYdFQw7y9MgA"
 
 # Generar solo la parte dinámica ("Hola [nombre]" o "Te esperamos [nombre]")
 def generar_audio(texto):
