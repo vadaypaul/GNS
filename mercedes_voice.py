@@ -41,12 +41,10 @@ def llamar(nombre, numero):
     # Crear estructura XML TwiML de forma segura
     response = ET.Element("Response")
 
-    ET.SubElement(response, "Pause", length="1")
     ET.SubElement(response, "Play").text = saludo_url
-    ET.SubElement(response, "Pause", length="1")
     ET.SubElement(response, "Play").text = mensaje_fijo_url
-    ET.SubElement(response, "Pause", length="1")
     ET.SubElement(response, "Play").text = despedida_url
+    ET.SubElement(response, "Pause", length="1")
 
     # Convertir XML a string válido
     twiml_str = ET.tostring(response, encoding="utf-8").decode()
