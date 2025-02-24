@@ -19,7 +19,7 @@ def generar_audio(texto):
         json={
             "text": texto,
             "model_id": "eleven_multilingual_v2",
-            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "style": 0.5, "use_speaker_boost": True}
+            "voice_settings": {"stability": 0.95, "similarity_boost": 0.85, "style": 0.5, "use_speaker_boost": True}, "speed": 1.13
         }
     )
     return response.content if response.status_code == 200 else None
