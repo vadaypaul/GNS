@@ -26,8 +26,8 @@ def obtener_grupo_diario():
         contactos = list(reader)
 
     dia_de_ejecucion = obtener_dia_de_ejecucion()
-    inicio = dia_de_ejecucion * 333
-    fin = inicio + 333
+    inicio = dia_de_ejecucion * 380
+    fin = inicio + 380
 
     return contactos[inicio:fin] if inicio < len(contactos) else []
 
