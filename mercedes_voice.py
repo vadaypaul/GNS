@@ -12,7 +12,7 @@ TWILIO_AUTH = os.getenv("TWILIO_AUTH")
 TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 RENDER_URL = "https://gns-yxfi.onrender.com"
 
-START_DATE = "2025-02-23"  # 🔴 Ajusta manualmente la fecha de inicio
+START_DATE = "2025-02-24"  # 🔴 Ajusta manualmente la fecha de inicio
 
 def obtener_dia_de_ejecucion():
     hoy = datetime.date.today()
