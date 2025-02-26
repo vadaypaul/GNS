@@ -20,22 +20,16 @@ def obtener_dia_de_ejecucion():
     return (hoy - start_date).days
 
 def obtener_grupo_diario():
-    with open('mercedes_customer.csv', 'r', encoding="utf-8") as file:
+    with open('mercedes_customer.csv', 'r') as file:
         reader = csv.reader(file)
-        total_contactos = sum(1 for _ in reader)  # Contar total de filas sin cargar en memoria
-        file.seek(0)  # Regresar al inicio del archivo
+        next(reader)  # Omitir encabezado
+        contactos = list(reader)
 
-        dia_de_ejecucion = obtener_dia_de_ejecucion()
-        inicio = (dia_de_ejecucion * 475) % total_contactos  # Evitar índices fuera de rango
-        fin = min(inicio + 475, total_contactos)
+    dia_de_ejecucion = obtener_dia_de_ejecucion()
+    inicio = dia_de_ejecucion * 475
+    fin = inicio + 475
 
-        for i, row in enumerate(reader):
-            if i < inicio:
-                continue  # Saltar contactos fuera del rango
-            if i >= fin:
-                break  # Detenerse al llegar al límite diario
-            if len(row) == 2:  # Verificar que tenga dos columnas
-                yield row[0].strip(), row[1].strip()  # Devolver contacto sin cargar todo en memoria
+    return contactos[inicio:fin] if inicio < len(contactos) else []
 
 def llamar(nombre, numero):
     client = Client(TWILIO_SID, TWILIO_AUTH)
@@ -73,4 +67,3 @@ def ejecutar_llamadas():
 
 if __name__ == "__main__":
     pass  # Evita que el código se ejecute al importar el script
-
