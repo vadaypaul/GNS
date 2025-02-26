@@ -12,7 +12,7 @@ TWILIO_AUTH = os.getenv("TWILIO_AUTH")
 TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 RENDER_URL = "https://gns-yxfi.onrender.com"
 
-START_DATE = "2025-02-25"  # 🔴 Ajusta manualmente la fecha de inicio
+START_DATE = "2025-02-24"  # 🔴 Ajusta manualmente la fecha de inicio
 
 def obtener_dia_de_ejecucion():
     hoy = datetime.date.today()
@@ -26,8 +26,8 @@ def obtener_grupo_diario():
         contactos = list(reader)
 
     dia_de_ejecucion = obtener_dia_de_ejecucion()
-    inicio = dia_de_ejecucion * 380
-    fin = inicio + 380
+    inicio = dia_de_ejecucion * 475
+    fin = inicio + 475
 
     return contactos[inicio:fin] if inicio < len(contactos) else []
 
@@ -66,4 +66,5 @@ def ejecutar_llamadas():
         llamar(nombre, numero)
 
 if __name__ == "__main__":
-    ejecutar_llamadas()
+    pass  # Evita que el código se ejecute al importar el script
+
